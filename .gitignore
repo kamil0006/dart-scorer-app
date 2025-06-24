@@ -1,0 +1,85 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+
+
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*    
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# --- node / JS ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json       
+.pnpm-debug.log*
+
+# --- Expo / React Native ---
+.expo/
+.expo-shared/
+.expo-go/
+.expo-packager/
+*.expo        # OTA update bundles
+
+# Hermes / Metro cache
+.expo/metro-cache/
+.expo/.temPCache/
+metro-cache/
+haul-cache/
+
+# --- Android native ---
+android/.gradle/
+android/.cxx/
+android/local.properties    
+android/build/
+android/app/build/
+android/app/generated/
+**/*.apk
+**/*.ap_            
+**/*.aab
+**/*.keystore      
+
+# --- iOS (może kiedyś dodam prebuild) ---
+ios/build/
+ios/Pods/
+*.xcworkspace
+*.xcuserstate
+
+# --- IDE / system ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
