@@ -27,7 +27,7 @@ export default function Numpad({ onCommit, onUndo }: Props) {
 
 			{/* Klawiatura 3×4 */}
 			<View style={styles.grid}>
-				{['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].map(d => (
+				{['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '26','60','100'].map(d => (
 					<Key key={d} label={d} onPress={() => push(d)} />
 				))}
 				<Key label='⌫' onPress={del} dark />
