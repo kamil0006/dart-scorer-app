@@ -83,3 +83,5 @@ ios/Pods/
 .DS_Store
 Thumbs.db
 
+metro.config.js
+

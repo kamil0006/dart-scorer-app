@@ -4,11 +4,15 @@ import React, { useCallback, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { deleteStatById } from '../database/statsRepository';
 import { clearGames, fetchGames } from '../lib/db';
+import { RootStackParamList } from '../navigation/types';
 
 export default function StatsScreen() {
 	const [games, setGames] = useState<any[]>([]);
+	const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
 	/* ---------------- odczyt listy za każdym wejściem na ekran ---------------- */
 	useFocusEffect(
@@ -64,25 +68,45 @@ export default function StatsScreen() {
 	/* ---------------------------- render pojedynczy -------------------------- */
 	const renderItem = ({ item }: { item: any }) => (
 		<Swipeable
-			overshootRight={false}
-			renderRightActions={() => (
-				<Pressable style={styles.deleteAction} onPress={() => handleDeleteOne(item.id)}>
-					<View style={styles.deleteCircle}>
-						<Ionicons name='trash' size={18} color='#fff' />
-					</View>
-				</Pressable>
-			)}>
-			<View style={styles.card}>
-				<Text style={styles.avg}>{item.avg3.toFixed(1)}</Text>
-				<View>
-					<Text style={styles.date}>{item.date.slice(0, 10)}</Text>
-				</View>
-				<View style={styles.variant}>
-					<Text style={styles.variantTxt}>{item.start}</Text>
-				</View>
+		  overshootRight={false}
+		  renderRightActions={() => (
+			<Pressable
+			  style={styles.deleteAction}
+			  onPress={() => handleDeleteOne(item.id)}
+			>
+			  <View style={styles.deleteCircle}>
+				<Ionicons name="trash" size={18} color="#fff" />
+			  </View>
+			</Pressable>
+		  )}
+		>
+		  
+		  <Pressable
+			style={styles.card}
+			onPress={() =>
+			  navigation.navigate('StatsDetail', {
+				id:    item.id,
+				turns: JSON.parse(item.turns),   // jeśli w DB trzymasz string
+				avg3:  item.avg3,
+				date:  item.date,
+				start: item.start,
+			  })
+			}
+		  >
+			
+			<Text style={styles.avg}>{item.avg3.toFixed(1)}</Text>
+	  
+			<View>
+			  <Text style={styles.date}>{item.date.slice(0, 10)}</Text>
 			</View>
+	  
+			<View style={styles.variant}>
+			  <Text style={styles.variantTxt}>{item.start}</Text>
+			</View>
+		  </Pressable>
 		</Swipeable>
-	);
+	  );
+	  
 
 	return (
 		<View style={styles.container}>

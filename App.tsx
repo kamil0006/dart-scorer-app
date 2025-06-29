@@ -16,6 +16,18 @@ import NewGameScreen from './screens/NewGameScreen';
 import GameScreen from './screens/GameScreen';
 import StatsScreen from './screens/StatsScreen';
 import { RootStackParamList } from './navigation/types';
+import StatsDetailScreen from './screens/StatsDetailScreen';
+
+const StatsStack = createNativeStackNavigator<RootStackParamList>();
+
+function StatsStackScreen() {
+  return (
+    <StatsStack.Navigator screenOptions={{ headerShown: false }}>
+      <StatsStack.Screen name="StatsList"   component={StatsScreen} />
+      <StatsStack.Screen name="StatsDetail" component={StatsDetailScreen} />
+    </StatsStack.Navigator>
+  );
+}
 
 /* ---------------------------- stos do gry (501/301) --------------------------- */
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -76,7 +88,7 @@ export default function App() {
           />
           <Tabs.Screen
             name="Stats"
-            component={StatsScreen}
+            component={StatsStackScreen}
             options={{ title: 'Statystyki' }}
           />
         </Tabs.Navigator>
