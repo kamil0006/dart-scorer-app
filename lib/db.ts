@@ -1,38 +1,62 @@
-import * as SQLite from 'expo-sqlite';
+/* lib/db.ts — najkrótsza wersja */
 
-/* 1 połączenie na apkę – wersja SYNC (prosta, bez promes) */
+import * as SQLite from 'expo-sqlite';
 export const db = SQLite.openDatabaseSync('dart.db');
 
-/* -------- inicjalizacja -------- */
+/** Dart pojedynczy rzut */
+export type Dart = { bed: number; m: 1 | 2 | 3 };
+
+/** wejście do saveGame */
+type GameInput = {
+	start: number;
+	turns: number[];
+	hits: Dart[];
+	checkout?: string;
+};
+
+/* ------------------------------------------------------------------------- */
+/* 2. Inicjalizacja bazy                                                     */
+/* ------------------------------------------------------------------------- */
 export function initDB() {
-	db.execSync(`PRAGMA journal_mode = WAL;
-    CREATE TABLE IF NOT EXISTS games (
-      id       INTEGER PRIMARY KEY NOT NULL,
-      date     TEXT,
-      start    INTEGER,
-      turns    TEXT,
-      darts    INTEGER,
-      scored   INTEGER,
-      avg3     REAL,
-      checkout TEXT
-    );`);
+	db.execSync(`
+	  PRAGMA journal_mode = WAL;
+	  CREATE TABLE IF NOT EXISTS games (
+		id       INTEGER PRIMARY KEY NOT NULL,
+		date     TEXT,
+		start    INTEGER,
+		turns    TEXT,
+		darts    INTEGER,
+		scored   INTEGER,
+		avg3     REAL,
+		checkout TEXT,
+		hits TEXT
+	  );
+	`);
+
+	// ⇣ MIGRACJA – jeżeli brakuje kolumny, dodaj ją
+	const rows = db.getAllSync("PRAGMA table_info('games');");
+	const hasHits = rows.some((r: any) => r.name === 'hits');
+	if (!hasHits) {
+		db.runSync("ALTER TABLE games ADD COLUMN hits TEXT DEFAULT '[]';");
+	}
 }
 
-/* -------- zapis lega -------- */
-type GameInput = { start: number; turns: number[]; checkout?: string };
-
-export function saveGame({ start, turns, checkout }: GameInput) {
+/* ------------------------------------------------------------------------- */
+/* 3. Zapis lega                                                             */
+/* ------------------------------------------------------------------------- */
+export function saveGame({ start, turns, hits, checkout }: GameInput) {
 	const darts = turns.length * 3;
 	const scored = turns.reduce((s, t) => s + t, 0);
 	const avg3 = (scored / darts) * 3;
 
 	db.runSync(
 		`INSERT INTO games
-       (date,start,turns,darts,scored,avg3,checkout)
-     VALUES (?,?,?,?,?,?,?);`,
+     (date,start,turns,hits,darts,scored,avg3,checkout)
+     VALUES (?,?,?,?,?,?,?,?);`,
 		new Date().toISOString(),
 		start,
 		JSON.stringify(turns),
+		JSON.stringify(hits ?? []),
 		darts,
 		scored,
 		avg3,
@@ -40,12 +64,11 @@ export function saveGame({ start, turns, checkout }: GameInput) {
 	);
 }
 
-/* -------- pobranie listy -------- */
+/* ------------------------------------------------------------------------- */
 export function fetchGames() {
 	return db.getAllSync('SELECT * FROM games ORDER BY id DESC;');
 }
 
-/* usuń wszystkie rekordy */
-export function clearGames(): void {
+export function clearGames() {
 	db.runSync('DELETE FROM games;');
 }

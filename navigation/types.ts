@@ -13,5 +13,6 @@ export type RootStackParamList = {
 	  date: string;
 	  start: number;                     // 501 / 301
 	};
+	Heatmap: undefined;
   };
   
