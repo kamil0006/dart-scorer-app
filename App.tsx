@@ -15,7 +15,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { db, initDB } from './lib/db';
 import { RootStackParamList } from './navigation/types';
 import GameScreen from './screens/GameScreen';
-import HeatmapScreen from './screens/HeatmapScreen';
+
 import NewGameScreen from './screens/NewGameScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import StatsDetailScreen from './screens/StatsDetailScreen';
@@ -29,7 +29,6 @@ function StatsStackScreen() {
 		<StatsStack.Navigator screenOptions={{ headerShown: false }}>
 			<StatsStack.Screen name='StatsList' component={StatsScreen} />
 			<StatsStack.Screen name='StatsDetail' component={StatsDetailScreen} />
-			<StatsStack.Screen name='Heatmap' component={HeatmapScreen} />
 		</StatsStack.Navigator>
 	);
 }
@@ -57,8 +56,8 @@ export default function App() {
 		// → sprawdź ostatni rekord, jeśli jest
 		const rows = db.getAllSync('SELECT * FROM games ORDER BY id DESC LIMIT 1;');
 		console.log('LAST ROW:', rows[0]);
-	  }, []);
-	  
+	}, []);
+
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			{/* system status-bar w trybie jasny-tekst na ciemnym tle */}
@@ -98,16 +97,7 @@ export default function App() {
 					})}>
 					<Tabs.Screen name='Play' component={PlayStack} options={{ title: 'Gra' }} />
 					<Tabs.Screen name='Stats' component={StatsStackScreen} options={{ title: 'Statystyki' }} />
-					<Tabs.Screen
-						name='HeatmapTab'
-						component={HeatmapScreen}
-						options={{
-							title: 'Heat-mapa',
-							tabBarIcon: ({ color, size, focused }) => (
-								<Ionicons name={focused ? 'flame' : 'flame-outline'} size={size} color={color} />
-							),
-						}}
-					/>
+
 					<Tabs.Screen
 						name='Settings'
 						component={SettingsScreen}
