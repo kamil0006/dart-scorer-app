@@ -29,6 +29,9 @@ export default function GameScreen({ route }: any): React.ReactElement {
 	const [advanced, setAdvanced] = useState<boolean>(false);
 	const [modalVisible, setModalVisible] = useState<boolean>(false);
 	const [editingSlot, setEditingSlot] = useState<number>(0);
+	// obok istniejących useState w GameScreen:
+	const [turnHitCounts, setTurnHitCounts] = useState<number[]>([]);
+
 
 	useFocusEffect(
 		useCallback(() => {
@@ -64,16 +67,46 @@ export default function GameScreen({ route }: any): React.ReactElement {
 	};
 
 	const onThrow = (d: Dart) => {
-		const newHits = [...hits, d];
-		setHits(newHits);
-		setGameHits(prev => [...prev, d]);
-		if (newHits.length % 3 === 0) {
-			const lastThree = newHits.slice(-3);
-			const pts = lastThree.reduce((s, h) => s + h.bed * h.m, 0);
-			handleTurnEnd(pts);
-			setHits([]);
+		// 1) Zbuduj nową listę lotek tej tury
+		const nextHits = [...hits, d];
+		const ptsSoFar = nextHits.reduce((s, h) => s + h.bed * h.m, 0);
+	  
+		// 2) Natychmiastowe zakończenie, jeśli w advanced padnie dokładnie currentScore
+		if (advanced && ptsSoFar === currentScore) {
+		  // zapisz liczbę lotek do turnHitCounts
+		  setTurnHitCounts(tc => [...tc, nextHits.length]);
+	  
+		  saveGame({
+			start: initialScore,
+			turns: [...turns, ptsSoFar],
+			hits: [...gameHits, d],
+			checkout: getCheckout(currentScore)?.join(' ')
+		  });
+		  // wyczyść całe leg
+		  setTurns([]);
+		  setHits([]);
+		  setGameHits([]);
+		  return;
 		}
-	};
+	  
+		// 3) Dodaj lotkę do stanu
+		setHits(nextHits);
+		setGameHits(prev => [...prev, d]);
+	  
+		// 4) Zakończenie tury:
+		//    - w prostym trybie od razu (po 1 lotce)
+		//    - w advanced po 3 lotkach
+		if (!advanced || nextHits.length === 3) {
+		  // zapisz liczbę lotek do turnHitCounts
+		  setTurnHitCounts(tc => [...tc, nextHits.length]);
+	  
+		  const pts = nextHits.reduce((s, h) => s + h.bed * h.m, 0);
+		  handleTurnEnd(pts);
+		  // czyścimy tylko bieżące lotki (gameHits już zawiera te 3)
+		  setHits([]);
+		}
+	  };
+	  
 
 	const removeHit = () => {
 		setHits(prev => prev.slice(0, -1));
@@ -91,6 +124,10 @@ export default function GameScreen({ route }: any): React.ReactElement {
 
 	// zastąp swoją pętlę circles dokładnie tym:
 	const circles = gameHits.map((h, idx) => {
+		if (h.bed === 0) {
+			return null;      // pomiń rysowanie
+		  }
+		  
 		let cx = 0,
 			cy = 0;
 		if (h.bed === 50) {
@@ -127,7 +164,20 @@ export default function GameScreen({ route }: any): React.ReactElement {
 						</View>
 					))}
 					{advanced && (
-						<Pressable style={styles.trashTurn} onPress={() => setTurns(ts => ts.slice(0, -1))}>
+						<Pressable style={styles.trashTurn} 
+						onPress={() => {
+							setTurns(ts => ts.slice(0, -1));
+						  
+							setTurnHitCounts(counts => {
+							  const lastCount = counts[counts.length - 1] ?? 0;
+							  // 1) odetnijmy ostatni wpis z turnHitCounts
+							  const newCounts = counts.slice(0, -1);
+							  // 2) odetnijmy z gameHits tyle elementów, ile było lotek
+							  setGameHits(h => h.slice(0, -lastCount));
+							  return newCounts;
+							});
+						  }}
+						  >
 							<Text style={styles.trashTxt}>🗑</Text>
 						</Pressable>
 					)}
