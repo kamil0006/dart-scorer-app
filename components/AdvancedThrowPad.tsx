@@ -1,4 +1,4 @@
-// components/AdvancedThrowPad.tsx
+
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Dart } from '../lib/db';
@@ -24,7 +24,7 @@ export default function AdvancedThrowPad({ onThrow }: Props) {
 		}
 	}, [throwsArr]);
 
-	// define multipliers explicitly to get correct types
+	
 	const multipliers: Array<1 | 2 | 3> = [1, 2, 3];
 
 	return (

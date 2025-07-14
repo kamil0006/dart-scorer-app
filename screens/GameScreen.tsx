@@ -32,7 +32,6 @@ export default function GameScreen({ route }: any): React.ReactElement {
 	// obok istniejących useState w GameScreen:
 	const [turnHitCounts, setTurnHitCounts] = useState<number[]>([]);
 
-
 	useFocusEffect(
 		useCallback(() => {
 			let active = true;
@@ -70,50 +69,61 @@ export default function GameScreen({ route }: any): React.ReactElement {
 		// 1) Zbuduj nową listę lotek tej tury
 		const nextHits = [...hits, d];
 		const ptsSoFar = nextHits.reduce((s, h) => s + h.bed * h.m, 0);
-	  
+
 		// 2) Natychmiastowe zakończenie, jeśli w advanced padnie dokładnie currentScore
 		if (advanced && ptsSoFar === currentScore) {
-		  // zapisz liczbę lotek do turnHitCounts
-		  setTurnHitCounts(tc => [...tc, nextHits.length]);
-	  
-		  saveGame({
-			start: initialScore,
-			turns: [...turns, ptsSoFar],
-			hits: [...gameHits, d],
-			checkout: getCheckout(currentScore)?.join(' ')
-		  });
-		  // wyczyść całe leg
-		  setTurns([]);
-		  setHits([]);
-		  setGameHits([]);
-		  return;
+			// zapisz liczbę lotek do turnHitCounts
+			setTurnHitCounts(tc => [...tc, nextHits.length]);
+
+			saveGame({
+				start: initialScore,
+				turns: [...turns, ptsSoFar],
+				hits: [...gameHits, d],
+				checkout: getCheckout(currentScore)?.join(' '),
+			});
+			// wyczyść całe leg
+			setTurns([]);
+			setHits([]);
+			setGameHits([]);
+			return;
 		}
-	  
+
 		// 3) Dodaj lotkę do stanu
 		setHits(nextHits);
 		setGameHits(prev => [...prev, d]);
-	  
+
 		// 4) Zakończenie tury:
 		//    - w prostym trybie od razu (po 1 lotce)
 		//    - w advanced po 3 lotkach
 		if (!advanced || nextHits.length === 3) {
-		  // zapisz liczbę lotek do turnHitCounts
-		  setTurnHitCounts(tc => [...tc, nextHits.length]);
-	  
-		  const pts = nextHits.reduce((s, h) => s + h.bed * h.m, 0);
-		  handleTurnEnd(pts);
-		  // czyścimy tylko bieżące lotki (gameHits już zawiera te 3)
-		  setHits([]);
+			// zapisz liczbę lotek do turnHitCounts
+			setTurnHitCounts(tc => [...tc, nextHits.length]);
+
+			const pts = nextHits.reduce((s, h) => s + h.bed * h.m, 0);
+			handleTurnEnd(pts);
+			// czyścimy tylko bieżące lotki (gameHits już zawiera te 3)
+			setHits([]);
 		}
-	  };
-	  
+	};
+	const freq = gameHits.reduce<Record<string, number>>((acc, h) => {
+		const key = `${h.bed}x${h.m}`;
+		acc[key] = (acc[key] || 0) + 1;
+		return acc;
+	}, {});
+
+	function getColor(count: number) {
+		if (count >= 20) return '#9400d3';
+		if (count >= 15) return '#ff69b4'; 
+		if (count >= 10) return '#F57C00'; 
+		if (count >= 5) return '#FBC02D'; 
+		return '#006400'; 
+	}
 
 	const removeHit = () => {
 		setHits(prev => prev.slice(0, -1));
 		setGameHits(prev => prev.slice(0, -1));
 	};
 
-	// na górze pliku GameScreen.tsx, zaraz po deklaracji OFFSET, dodaj:
 	const DART_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 	const rInnerBull = R * 0.05;
 	const rOuterBull = R * 0.1;
@@ -122,12 +132,11 @@ export default function GameScreen({ route }: any): React.ReactElement {
 	const rDoubleInner = R * 0.85;
 	const rDoubleOuter = R * 0.95;
 
-	// zastąp swoją pętlę circles dokładnie tym:
 	const circles = gameHits.map((h, idx) => {
 		if (h.bed === 0) {
-			return null;      // pomiń rysowanie
-		  }
-		  
+			return null; // pomiń rysowanie
+		}
+
 		let cx = 0,
 			cy = 0;
 		if (h.bed === 50) {
@@ -149,7 +158,9 @@ export default function GameScreen({ route }: any): React.ReactElement {
 			cx = rMap * Math.cos(angle);
 			cy = rMap * Math.sin(angle);
 		}
-		return <Circle key={idx} cx={cx} cy={cy} r={6} fill='rgba(255,80,0,0.8)' />;
+		const key = `${h.bed}x${h.m}`;
+		const color = getColor(freq[key] || 0);
+		return <Circle key={idx} cx={cx} cy={cy} r={6} fill={color} />;
 	});
 
 	return (
@@ -164,20 +175,20 @@ export default function GameScreen({ route }: any): React.ReactElement {
 						</View>
 					))}
 					{advanced && (
-						<Pressable style={styles.trashTurn} 
-						onPress={() => {
-							setTurns(ts => ts.slice(0, -1));
-						  
-							setTurnHitCounts(counts => {
-							  const lastCount = counts[counts.length - 1] ?? 0;
-							  // 1) odetnijmy ostatni wpis z turnHitCounts
-							  const newCounts = counts.slice(0, -1);
-							  // 2) odetnijmy z gameHits tyle elementów, ile było lotek
-							  setGameHits(h => h.slice(0, -lastCount));
-							  return newCounts;
-							});
-						  }}
-						  >
+						<Pressable
+							style={styles.trashTurn}
+							onPress={() => {
+								setTurns(ts => ts.slice(0, -1));
+
+								setTurnHitCounts(counts => {
+									const lastCount = counts[counts.length - 1] ?? 0;
+									// 1) odetnijmy ostatni wpis z turnHitCounts
+									const newCounts = counts.slice(0, -1);
+									// 2) odetnijmy z gameHits tyle elementów, ile było lotek
+									setGameHits(h => h.slice(0, -lastCount));
+									return newCounts;
+								});
+							}}>
 							<Text style={styles.trashTxt}>🗑</Text>
 						</Pressable>
 					)}
@@ -224,12 +235,32 @@ export default function GameScreen({ route }: any): React.ReactElement {
 							</Svg>
 							<DartboardPicker onSelect={(b, m) => onThrow({ bed: b, m })} />
 						</View>
+						<View style={styles.legend}>
+							<Text style={styles.legendTitle}>Legenda trafień:</Text>
+							<View style={styles.legendItems}>
+								<LegendItem color='#006400' label='1 trafienie' />
+								<LegendItem color='#FBC02D' label='5 trafień' />
+								<LegendItem color='#F57C00' label='10 trafień' />
+								<LegendItem color='#ff69b4' label='15 trafień' />
+								<LegendItem color='#9400d3' label='≥ 20 trafień' />
+							</View>
+						</View>
 					</>
 				)}
 			</ScrollView>
 		</SafeAreaView>
 	);
 }
+
+function LegendItem({ color, label }: { color: string; label: string }) {
+	return (
+	  <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+		<View style={{ width: 16, height: 16, backgroundColor: color, borderRadius: 4, marginRight: 4 }} />
+		<Text style={{ color: '#fff', fontSize: 12 }}>{label}</Text>
+	  </View>
+	);
+  }
+  
 
 const styles = StyleSheet.create({
 	container: { flex: 1, backgroundColor: '#121212' },
@@ -258,5 +289,23 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		marginVertical: 16,
 		width: '100%',
+	},
+	legend: {
+		marginTop: 16,
+		padding: 8,
+		backgroundColor: '#222',
+		borderRadius: 8,
+	},
+	legendTitle: {
+		color: '#fff',
+		fontSize: 14,
+		fontWeight: '600',
+		marginBottom: 4,
+		textAlign: 'center',
+	},
+	legendItems: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		justifyContent: 'center',
 	},
 });

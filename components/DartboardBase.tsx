@@ -4,8 +4,8 @@ import { Dimensions } from 'react-native';
 import Svg, { Circle, G, Path, Text as SvgText } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
-// Use 80% of screen width for board
-const SIZE = width * 0.8; // board is 60% of screen width
+
+const SIZE = width * 0.8; 
 const R = SIZE / 2;
 const SEGMENTS = 20;
 const ANG = (2 * Math.PI) / SEGMENTS;

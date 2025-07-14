@@ -1,7 +1,4 @@
-/* lib/checkout.ts
- * Podpowiedzi: jak zakończyć w 3 rzutach (PDC standard).
- * Jeśli wolisz wersję „bez bull”, wystarczy zmienić wybrane wpisy.
- */
+
 
 const chart = new Map<number, string[]>([
 	// 170–161 (3 lotki z Bullem)

@@ -16,7 +16,7 @@ export default function ThreeThrowsInput({ onComplete }: Props) {
     setThrowsArr(next);
     if (next.length === 3) {
       onComplete(next);
-      setThrowsArr([]); // zresetuj po przesłaniu
+      setThrowsArr([]); 
     }
   };
 
@@ -30,8 +30,7 @@ export default function ThreeThrowsInput({ onComplete }: Props) {
           </View>
         );
       })}
-      {/* Tu możesz podpiąć swój picker tarczy lub Numpad do wyboru pojedynczej lotki */}
-      {/* Dla demo: trzy przyciski przykładowych rzutów */}
+      
       <View style={s.buttons}>
         {[20, 19, 18].map(b => (
           <Pressable key={b} onPress={() => add(b, 1)} style={s.btn}>

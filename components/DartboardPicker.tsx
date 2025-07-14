@@ -1,4 +1,4 @@
-// components/DartboardPicker.tsx
+
 import React from 'react';
 import { Dimensions } from 'react-native';
 import Svg, { Circle, G, Path } from 'react-native-svg';
@@ -14,7 +14,7 @@ const SEGMENTS = 20;
 const ANG = (2 * Math.PI) / SEGMENTS;
 const OFFSET = -ANG / 2;
 
-// Radii definitions must match DartboardBase
+
 const rInnerBull = R * 0.05;
 const rOuterBull = R * 0.1;
 const rTripleInner = R * 0.45;
