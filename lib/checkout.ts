@@ -1,5 +1,3 @@
-
-
 const chart = new Map<number, string[]>([
 	// 170–161 (3 lotki z Bullem)
 	[170, ['T20', 'T20', 'Bull']],

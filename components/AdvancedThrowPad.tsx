@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Dart } from '../lib/db';
@@ -24,7 +23,6 @@ export default function AdvancedThrowPad({ onThrow }: Props) {
 		}
 	}, [throwsArr]);
 
-	
 	const multipliers: Array<1 | 2 | 3> = [1, 2, 3];
 
 	return (

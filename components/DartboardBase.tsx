@@ -5,7 +5,7 @@ import Svg, { Circle, G, Path, Text as SvgText } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 
-const SIZE = width * 0.8; 
+const SIZE = width * 0.8;
 const R = SIZE / 2;
 const SEGMENTS = 20;
 const ANG = (2 * Math.PI) / SEGMENTS;

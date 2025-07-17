@@ -24,7 +24,7 @@ export default function NewGameScreen({ navigation }: NewGameScreenProps) {
 				values={['501', '301']}
 				selectedIndex={variant === '501' ? 0 : 1}
 				onChange={e => setVariant(e.nativeEvent.selectedSegmentIndex === 0 ? '501' : '301')}
-				style={{ width: 280, height:50 }}
+				style={{ width: 280, height: 50 }}
 			/>
 
 			<Pressable style={styles.startBtn} onPress={handleStart}>
@@ -43,8 +43,8 @@ const styles = StyleSheet.create({
 		backgroundColor: '#121212',
 	},
 	startBtn: {
-		paddingHorizontal: 40, // szerokość
-		paddingVertical: 14, // wysokość
+		paddingHorizontal: 40,
+		paddingVertical: 14,
 		backgroundColor: '#8AB4F8',
 		borderRadius: 10,
 	},

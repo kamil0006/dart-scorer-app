@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dimensions } from 'react-native';
 import Svg, { Circle, G, Path } from 'react-native-svg';
@@ -13,7 +12,6 @@ const R = SIZE / 2;
 const SEGMENTS = 20;
 const ANG = (2 * Math.PI) / SEGMENTS;
 const OFFSET = -ANG / 2;
-
 
 const rInnerBull = R * 0.05;
 const rOuterBull = R * 0.1;

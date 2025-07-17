@@ -1,4 +1,5 @@
 // screens/GameScreen.tsx
+import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import { Dimensions, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
@@ -6,7 +7,7 @@ import Svg, { Circle, G } from 'react-native-svg';
 import AdvancedThrowPad from '../components/AdvancedThrowPad';
 import DartboardBase from '../components/DartboardBase';
 import DartboardPicker from '../components/DartboardPicker';
-import ManualInputModal from '../components/ManualInputModal';
+
 import Numpad from '../components/Numpad';
 import ScoreBoard from '../components/ScoreBoard';
 import { getCheckout } from '../lib/checkout';
@@ -27,9 +28,7 @@ export default function GameScreen({ route }: any): React.ReactElement {
 	const [hits, setHits] = useState<Dart[]>([]);
 	const [gameHits, setGameHits] = useState<Dart[]>([]);
 	const [advanced, setAdvanced] = useState<boolean>(false);
-	const [modalVisible, setModalVisible] = useState<boolean>(false);
-	const [editingSlot, setEditingSlot] = useState<number>(0);
-	// obok istniejących useState w GameScreen:
+
 	const [turnHitCounts, setTurnHitCounts] = useState<number[]>([]);
 
 	useFocusEffect(
@@ -113,10 +112,10 @@ export default function GameScreen({ route }: any): React.ReactElement {
 
 	function getColor(count: number) {
 		if (count >= 20) return '#9400d3';
-		if (count >= 15) return '#ff69b4'; 
-		if (count >= 10) return '#F57C00'; 
-		if (count >= 5) return '#FBC02D'; 
-		return '#006400'; 
+		if (count >= 15) return '#ff69b4';
+		if (count >= 10) return '#F57C00';
+		if (count >= 5) return '#FBC02D';
+		return '#006400';
 	}
 
 	const removeHit = () => {
@@ -189,7 +188,7 @@ export default function GameScreen({ route }: any): React.ReactElement {
 									return newCounts;
 								});
 							}}>
-							<Text style={styles.trashTxt}>🗑</Text>
+							<MaterialIcons name='delete-outline' size={24} color='#fff' />
 						</Pressable>
 					)}
 				</View>
@@ -202,29 +201,15 @@ export default function GameScreen({ route }: any): React.ReactElement {
 					<>
 						<View style={styles.slotsRow}>
 							{Array.from({ length: 3 }).map((_, idx) => (
-								<Pressable
-									key={idx}
-									style={styles.slot}
-									onPress={() => {
-										setEditingSlot(idx);
-										setModalVisible(true);
-									}}>
+								<View key={idx} style={styles.slot}>
 									<Text style={styles.slotTxt}>{hits[idx] ? `${hits[idx].m}×${hits[idx].bed}` : '-'}</Text>
-								</Pressable>
+								</View>
 							))}
 							<Pressable style={styles.slotBtn} onPress={removeHit}>
-								<Text style={styles.slotBtnTxt}>↩︎</Text>
+								<MaterialIcons name='undo' size={20} color='#fff' />
 							</Pressable>
 						</View>
-						<ManualInputModal
-							visible={modalVisible}
-							initial={hits[editingSlot]?.bed ?? null}
-							onClose={() => setModalVisible(false)}
-							onConfirm={pts => {
-								onThrow({ bed: pts, m: 1 });
-								setModalVisible(false);
-							}}
-						/>
+
 						<AdvancedThrowPad onThrow={onThrow} onUndo={removeHit} />
 						<View style={{ width: SIZE, height: SIZE, alignSelf: 'center' }}>
 							<DartboardBase />
@@ -254,13 +239,12 @@ export default function GameScreen({ route }: any): React.ReactElement {
 
 function LegendItem({ color, label }: { color: string; label: string }) {
 	return (
-	  <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
-		<View style={{ width: 16, height: 16, backgroundColor: color, borderRadius: 4, marginRight: 4 }} />
-		<Text style={{ color: '#fff', fontSize: 12 }}>{label}</Text>
-	  </View>
+		<View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12, paddingBottom: 8 }}>
+			<View style={{ width: 16, height: 16, backgroundColor: color, borderRadius: 4, marginRight: 4 }} />
+			<Text style={{ color: '#fff', fontSize: 12 }}>{label}</Text>
+		</View>
 	);
-  }
-  
+}
 
 const styles = StyleSheet.create({
 	container: { flex: 1, backgroundColor: '#121212' },
