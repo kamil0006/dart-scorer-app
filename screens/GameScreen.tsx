@@ -1,4 +1,4 @@
-// screens/GameScreen.tsx
+
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
@@ -28,6 +28,7 @@ export default function GameScreen({ route }: any): React.ReactElement {
 	const [hits, setHits] = useState<Dart[]>([]);
 	const [gameHits, setGameHits] = useState<Dart[]>([]);
 	const [advanced, setAdvanced] = useState<boolean>(false);
+	const [gameOver, setGameOver] = useState(false);
 
 	const [turnHitCounts, setTurnHitCounts] = useState<number[]>([]);
 
@@ -48,17 +49,26 @@ export default function GameScreen({ route }: any): React.ReactElement {
 	const handleTurnEnd = (pts: number) => {
 		if (pts < 0 || pts > 180) return;
 		const next = currentScore - pts;
-		if (next < 0 || next === 1) return;
+		if (next < 0 || next === 1) return; // bust
+
 		if (next === 0) {
+			// zapis do bazy
 			saveGame({
 				start: initialScore,
 				turns: [...turns, pts],
 				hits: gameHits,
 				checkout: getCheckout(currentScore)?.join(' '),
 			});
-			setTurns([]);
-			setHits([]);
-			setGameHits([]);
+
+			if (advanced) {
+				// w advanced – koniec, ale trzymaj planszę
+				setGameOver(true);
+			} else {
+				// w normalnym trybie czyść od razu
+				setTurns([]);
+				setHits([]);
+				setGameHits([]);
+			}
 		} else {
 			setTurns(prev => [...prev, pts]);
 		}
@@ -66,6 +76,7 @@ export default function GameScreen({ route }: any): React.ReactElement {
 
 	const onThrow = (d: Dart) => {
 		// 1) Zbuduj nową listę lotek tej tury
+		if (advanced && gameOver) return;
 		const nextHits = [...hits, d];
 		const ptsSoFar = nextHits.reduce((s, h) => s + h.bed * h.m, 0);
 
@@ -80,10 +91,10 @@ export default function GameScreen({ route }: any): React.ReactElement {
 				hits: [...gameHits, d],
 				checkout: getCheckout(currentScore)?.join(' '),
 			});
-			// wyczyść całe leg
+			// wyczyść tylko bieżące lotki i tury, NIE czyść gameHits
 			setTurns([]);
 			setHits([]);
-			setGameHits([]);
+			setGameOver(true); // pokaż przycisk 'Nowa Gra', nie resetuj SVG
 			return;
 		}
 
@@ -166,7 +177,21 @@ export default function GameScreen({ route }: any): React.ReactElement {
 		<SafeAreaView style={styles.container}>
 			<StatusBar barStyle='light-content' />
 			<ScrollView contentContainerStyle={styles.scroll}>
-				<ScoreBoard score={currentScore} average={average3d} checkout={getCheckout(currentScore)} />
+				{advanced && gameOver ? (
+					<Pressable
+						style={styles.newGameBtn}
+						onPress={() => {
+							setTurns([]);
+							setHits([]);
+							setGameHits([]);
+							setTurnHitCounts([]);
+							setGameOver(false);
+						}}>
+						<Text style={styles.newGameTxt}>Nowa Gra</Text>
+					</Pressable>
+				) : (
+					<ScoreBoard score={currentScore} average={average3d} checkout={getCheckout(currentScore)} />
+				)}
 				<View style={styles.history}>
 					{turns.map((t, i) => (
 						<View key={i} style={styles.tag}>
@@ -291,5 +316,18 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		flexWrap: 'wrap',
 		justifyContent: 'center',
+	},
+	newGameBtn: {
+		marginTop: 16,
+		paddingVertical: 12,
+		paddingHorizontal: 24,
+		backgroundColor: '#60D394',
+		borderRadius: 8,
+		alignSelf: 'center',
+	},
+	newGameTxt: {
+		color: '#000',
+		fontSize: 16,
+		fontWeight: '600',
 	},
 });
