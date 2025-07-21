@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useState } from 'react';
@@ -85,6 +86,7 @@ export default function StatsScreen() {
 						avg3: item.avg3,
 						date: item.date,
 						start: item.start,
+						forfeited: item.forfeited === 1 || item.forfeited === true,
 					})
 				}>
 				<Text style={styles.avg}>{item.avg3.toFixed(1)}</Text>
@@ -96,6 +98,15 @@ export default function StatsScreen() {
 				<View style={styles.variant}>
 					<Text style={styles.variantTxt}>{item.start}</Text>
 				</View>
+
+				{item.forfeited === 1 || (item.forfeited === true && item.forfeitScore != null) ? (
+					<View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+						<MaterialIcons name='flag' size={20} color='#B00020' />
+						<Text style={{ color: '#B00020', fontWeight: 'bold', marginLeft: 4, fontSize: 13 }}>
+							{item.forfeitScore} pts left
+						</Text>
+					</View>
+				) : null}
 			</Pressable>
 		</Swipeable>
 	);

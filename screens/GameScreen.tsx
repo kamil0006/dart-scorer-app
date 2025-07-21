@@ -1,4 +1,3 @@
-
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
@@ -134,6 +133,23 @@ export default function GameScreen({ route }: any): React.ReactElement {
 		setGameHits(prev => prev.slice(0, -1));
 	};
 
+	// Forfeit handler
+	const handleForfeit = () => {
+		saveGame({
+			start: initialScore,
+			turns,
+			hits: gameHits,
+			checkout: getCheckout(currentScore)?.join(' '),
+			forfeited: true,
+			forfeitScore: currentScore,
+		});
+		setTurns([]);
+		setHits([]);
+		setGameHits([]);
+		setTurnHitCounts([]);
+		setGameOver(false);
+	};
+
 	const DART_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 	const rInnerBull = R * 0.05;
 	const rOuterBull = R * 0.1;
@@ -177,6 +193,13 @@ export default function GameScreen({ route }: any): React.ReactElement {
 		<SafeAreaView style={styles.container}>
 			<StatusBar barStyle='light-content' />
 			<ScrollView contentContainerStyle={styles.scroll}>
+				{/* Forfeit Game button, only show if game is in progress (not over, and there are turns or hits) */}
+				{!gameOver && (turns.length > 0 || hits.length > 0 || gameHits.length > 0) && (
+					<Pressable style={styles.forfeitBtn} onPress={handleForfeit}>
+						<MaterialIcons name='flag' size={20} color='#fff' style={{ marginRight: 6 }} />
+						<Text style={styles.forfeitTxt}>Forfeit Game</Text>
+					</Pressable>
+				)}
 				{advanced && gameOver ? (
 					<Pressable
 						style={styles.newGameBtn}
@@ -328,6 +351,21 @@ const styles = StyleSheet.create({
 	newGameTxt: {
 		color: '#000',
 		fontSize: 16,
+		fontWeight: '600',
+	},
+	forfeitBtn: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		alignSelf: 'center',
+		backgroundColor: '#B00020',
+		paddingVertical: 8,
+		paddingHorizontal: 16,
+		borderRadius: 8,
+		marginBottom: 8,
+	},
+	forfeitTxt: {
+		color: '#fff',
+		fontSize: 15,
 		fontWeight: '600',
 	},
 });

@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StackScreenProps } from '@react-navigation/stack';
 import React from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +8,7 @@ import { RootStackParamList } from '../navigation/types';
 type Props = StackScreenProps<RootStackParamList, 'StatsDetail'>;
 
 export default function StatsDetailScreen({ route, navigation }: Props) {
-	const { turns, avg3, date, start } = route.params;
+	const { turns, avg3, date, start, forfeited = false, forfeitScore = null } = route.params;
 	const darts = turns.length * 3;
 
 	const renderTurn = ({ item, index }: { item: number; index: number }) => (
@@ -23,9 +24,19 @@ export default function StatsDetailScreen({ route, navigation }: Props) {
 				<Pressable onPress={() => navigation.goBack()}>
 					<Ionicons name='chevron-back' size={26} color='#8AB4F8' />
 				</Pressable>
-				<Text style={styles.title}>
-					{date.slice(0, 10)} • {start}
-				</Text>
+				<View style={{ flexDirection: 'row', alignItems: 'center' }}>
+					<Text style={styles.title}>
+						{date.slice(0, 10)} • {start}
+					</Text>
+					{forfeited ? (
+						<View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+							<MaterialIcons name='flag' size={20} color='#B00020' />
+							<Text style={{ color: '#B00020', fontWeight: 'bold', marginLeft: 4 }}>
+								Forfeited{forfeitScore != null ? ` (${forfeitScore} pts left)` : ''}
+							</Text>
+						</View>
+					) : null}
+				</View>
 				<View style={{ width: 26 }} />
 			</View>
 

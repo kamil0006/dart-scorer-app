@@ -12,6 +12,8 @@ type GameInput = {
 	turns: number[];
 	hits: Dart[];
 	checkout?: string;
+	forfeited?: boolean;
+	forfeitScore?: number;
 };
 
 /* ------------------------------------------------------------------------- */
@@ -29,7 +31,9 @@ export function initDB() {
 		scored   INTEGER,
 		avg3     REAL,
 		checkout TEXT,
-		hits TEXT
+		hits TEXT,
+		forfeited INTEGER DEFAULT 0,
+		forfeitScore INTEGER DEFAULT NULL
 	  );
 	`);
 
@@ -39,20 +43,28 @@ export function initDB() {
 	if (!hasHits) {
 		db.runSync("ALTER TABLE games ADD COLUMN hits TEXT DEFAULT '[]';");
 	}
+	const hasForfeited = rows.some((r: any) => r.name === 'forfeited');
+	if (!hasForfeited) {
+		db.runSync('ALTER TABLE games ADD COLUMN forfeited INTEGER DEFAULT 0;');
+	}
+	const hasForfeitScore = rows.some((r: any) => r.name === 'forfeitScore');
+	if (!hasForfeitScore) {
+		db.runSync('ALTER TABLE games ADD COLUMN forfeitScore INTEGER DEFAULT NULL;');
+	}
 }
 
 /* ------------------------------------------------------------------------- */
 /* 3. Zapis lega                                                             */
 /* ------------------------------------------------------------------------- */
-export function saveGame({ start, turns, hits, checkout }: GameInput) {
+export function saveGame({ start, turns, hits, checkout, forfeited, forfeitScore }: GameInput) {
 	const darts = turns.length * 3;
 	const scored = turns.reduce((s, t) => s + t, 0);
 	const avg3 = (scored / darts) * 3;
 
 	db.runSync(
 		`INSERT INTO games
-     (date,start,turns,hits,darts,scored,avg3,checkout)
-     VALUES (?,?,?,?,?,?,?,?);`,
+     (date,start,turns,hits,darts,scored,avg3,checkout,forfeited,forfeitScore)
+     VALUES (?,?,?,?,?,?,?,?,?,?);`,
 		new Date().toISOString(),
 		start,
 		JSON.stringify(turns),
@@ -60,7 +72,9 @@ export function saveGame({ start, turns, hits, checkout }: GameInput) {
 		darts,
 		scored,
 		avg3,
-		checkout ?? null
+		checkout ?? null,
+		forfeited ? 1 : 0,
+		forfeited ? forfeitScore ?? null : null
 	);
 }
 
