@@ -114,16 +114,14 @@ export default function StatsScreen() {
 	/* ---------- JSX ---------- */
 	return (
 		<View style={styles.container}>
-			<View style={styles.header}>
-				<Stat label='Gier' value={played} />
-				<Stat label='Naj. AVG' value={bestAvg} />
-				<Stat label='AVG całość' value={allAvg} />
-				<Stat label='501' value={g501} />
-				<Stat label='301' value={g301} />
-
-				<Pressable style={styles.trashAll} onPress={handleClearAll}>
-					<Ionicons name='trash' size={18} color='#fff' />
-				</Pressable>
+			<Text style={styles.sectionHeader}>Podsumowanie</Text>
+			<View style={styles.statsGrid}>
+				<Stat label='Gier' value={played} icon={'sports-esports'} />
+				<Stat label='Naj. AVG' value={bestAvg} icon={'star'} />
+				<Stat label='AVG całość' value={allAvg} icon={'insert-chart'} />
+				<Stat label='Lotki łącznie' value={allDarts} icon={'sports-soccer'} />
+				<Stat label='501' value={g501} icon={'filter-5'} />
+				<Stat label='301' value={g301} icon={'filter-3'} />
 			</View>
 
 			<FlatList
@@ -137,11 +135,12 @@ export default function StatsScreen() {
 }
 
 /* komponent pomocniczy */
-function Stat({ label, value }: { label: string; value: any }) {
+function Stat({ label, value, icon }: { label: string; value: any; icon?: keyof typeof MaterialIcons.glyphMap }) {
 	return (
-		<View style={{ alignItems: 'center' }}>
-			<Text style={{ color: '#fff', fontSize: 22, fontWeight: '600' }}>{value}</Text>
-			<Text style={{ color: '#888' }}>{label}</Text>
+		<View style={styles.statCard}>
+			{icon && <MaterialIcons name={icon} size={24} color='#8AB4F8' style={{ marginBottom: 4 }} />}
+			<Text style={styles.statValue}>{value}</Text>
+			<Text style={styles.statLabel}>{label}</Text>
 		</View>
 	);
 }
@@ -199,4 +198,43 @@ const styles = StyleSheet.create({
 	variantTxt: { color: '#8AB4F8', fontSize: 12, fontWeight: '600' },
 	avg: { fontSize: 26, color: '#8AB4F8', width: 70, textAlign: 'center' },
 	date: { color: '#fff', fontSize: 14 },
+	sectionHeader: {
+		color: '#8AB4F8',
+		fontSize: 18,
+		fontWeight: '700',
+		marginBottom: 10,
+		marginTop: 8,
+		alignSelf: 'center',
+		letterSpacing: 1,
+	},
+	statsGrid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		justifyContent: 'center',
+		gap: 12,
+		marginBottom: 18,
+	},
+	statCard: {
+		width: '30%',
+		minWidth: 100,
+		aspectRatio: 1,
+		backgroundColor: '#23272E',
+		borderRadius: 14,
+		margin: 6,
+		alignItems: 'center',
+		justifyContent: 'center',
+		paddingVertical: 12,
+		elevation: 2,
+	},
+	statValue: {
+		color: '#fff',
+		fontSize: 22,
+		fontWeight: 'bold',
+		marginBottom: 2,
+	},
+	statLabel: {
+		color: '#8AB4F8',
+		fontSize: 13,
+		textAlign: 'center',
+	},
 });
