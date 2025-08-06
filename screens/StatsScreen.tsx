@@ -3,7 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 
 import { deleteStatById } from '../database/statsRepository';
@@ -65,6 +65,28 @@ export default function StatsScreen() {
 	const bestAvg = Math.max(...games.map(g => g.avg3), 0).toFixed(1);
 	const allDarts = games.reduce((s, g) => s + g.darts, 0);
 	const allAvg = played ? ((games.reduce((s, g) => s + g.scored, 0) / allDarts) * 3).toFixed(1) : '0.0';
+	const highestCheckout = Math.max(
+		...games.map(g => {
+			if (g.checkout && g.checkout !== 'null') {
+				// Extract the highest value from checkout string (e.g., "T20 T20 Bull" -> 170)
+				const checkoutValues = g.checkout.split(' ').map((shot: string) => {
+					if (shot.startsWith('T')) return parseInt(shot.slice(1)) * 3;
+					if (shot.startsWith('D')) return parseInt(shot.slice(1)) * 2;
+					if (shot === 'Bull') return 50;
+					if (shot === '25') return 25;
+					return parseInt(shot) || 0;
+				});
+				return checkoutValues.reduce((sum: number, val: number) => sum + val, 0);
+			}
+			return 0;
+		}),
+		0
+	);
+	// Calculate 180s count
+	const count180s = games.reduce((count, g) => {
+		const turns = JSON.parse(g.turns);
+		return count + turns.filter((turn: number) => turn === 180).length;
+	}, 0);
 
 	/* render pojedynczej karty */
 	const renderItem = ({ item }: { item: any }) => (
@@ -114,14 +136,20 @@ export default function StatsScreen() {
 	/* ---------- JSX ---------- */
 	return (
 		<View style={styles.container}>
-			<Text style={styles.sectionHeader}>Podsumowanie</Text>
-			<View style={styles.statsGrid}>
-				<Stat label='Gier' value={played} icon={'sports-esports'} />
-				<Stat label='Naj. AVG' value={bestAvg} icon={'star'} />
-				<Stat label='AVG całość' value={allAvg} icon={'insert-chart'} />
-				<Stat label='Lotki łącznie' value={allDarts} icon={'sports-soccer'} />
-				<Stat label='501' value={g501} icon={'filter-5'} />
-				<Stat label='301' value={g301} icon={'filter-3'} />
+			<View style={styles.statsSection}>
+				<Text style={styles.sectionHeader}>Podsumowanie</Text>
+				<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.statsContainer}>
+					<View style={styles.statsGrid}>
+						<Stat label='Gier' value={played} icon={'sports-soccer'} />
+						<Stat label='Naj. AVG' value={bestAvg} icon={'star'} />
+						<Stat label='AVG całość' value={allAvg} icon={'insert-chart'} />
+						<Stat label='Lotki łącznie' value={allDarts} icon={'gps-fixed'} />
+						<Stat label='Naj. finish' value={highestCheckout} icon={'trending-up'} />
+						<Stat label='180s' value={count180s} icon={'whatshot'} />
+						<Stat label='501' value={g501} icon={'filter-5'} />
+						<Stat label='301' value={g301} icon={'filter-3'} />
+					</View>
+				</ScrollView>
 			</View>
 
 			<FlatList
@@ -135,12 +163,23 @@ export default function StatsScreen() {
 }
 
 /* komponent pomocniczy */
-function Stat({ label, value, icon }: { label: string; value: any; icon?: keyof typeof MaterialIcons.glyphMap }) {
+function Stat({
+	label,
+	value,
+	icon,
+	isAdvanced,
+}: {
+	label: string;
+	value: any;
+	icon?: keyof typeof MaterialIcons.glyphMap;
+	isAdvanced?: boolean;
+}) {
 	return (
-		<View style={styles.statCard}>
+		<View style={[styles.statCard, isAdvanced && styles.advancedStatCard]}>
 			{icon && <MaterialIcons name={icon} size={24} color='#8AB4F8' style={{ marginBottom: 4 }} />}
 			<Text style={styles.statValue}>{value}</Text>
 			<Text style={styles.statLabel}>{label}</Text>
+			{isAdvanced && <View style={styles.advancedIndicator} />}
 		</View>
 	);
 }
@@ -183,8 +222,8 @@ const styles = StyleSheet.create({
 		gap: 12,
 		backgroundColor: '#1E1E1E',
 		borderRadius: 10,
-		padding: 12,
-		marginBottom: 10,
+		padding: 8,
+		marginBottom: 6,
 		alignItems: 'center',
 	},
 	variant: {
@@ -197,22 +236,27 @@ const styles = StyleSheet.create({
 	},
 	variantTxt: { color: '#8AB4F8', fontSize: 12, fontWeight: '600' },
 	avg: { fontSize: 26, color: '#8AB4F8', width: 70, textAlign: 'center' },
-	date: { color: '#fff', fontSize: 14 },
+	date: { color: '#fff', fontSize: 13 },
 	sectionHeader: {
 		color: '#8AB4F8',
 		fontSize: 18,
 		fontWeight: '700',
 		marginBottom: 10,
-		marginTop: 8,
+		marginTop: 0,
 		alignSelf: 'center',
 		letterSpacing: 1,
+	},
+	statsContainer: {
+		flexGrow: 1,
+		paddingBottom: 24,
 	},
 	statsGrid: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
 		justifyContent: 'center',
+		paddingHorizontal: 16,
 		gap: 12,
-		marginBottom: 18,
+		marginBottom: 32,
 	},
 	statCard: {
 		width: '30%',
@@ -236,5 +280,25 @@ const styles = StyleSheet.create({
 		color: '#8AB4F8',
 		fontSize: 13,
 		textAlign: 'center',
+	},
+	advancedStatCard: {
+		borderWidth: 2,
+		borderColor: '#8AB4F8',
+	},
+	advancedIndicator: {
+		position: 'absolute',
+		top: 4,
+		right: 4,
+		width: 8,
+		height: 8,
+		borderRadius: 4,
+		backgroundColor: '#8AB4F8',
+	},
+	statsSection: {
+		backgroundColor: '#1A1A1A',
+		borderRadius: 12,
+		padding: 16,
+		marginBottom: 20,
+		elevation: 2,
 	},
 });
