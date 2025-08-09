@@ -214,9 +214,8 @@ expo build:web        # Web deployment
 
 ### **Distribution**
 
-- **Google Play Store**: Android app distribution
-- **App Store**: iOS app distribution
-- **Web**: Hosted progressive web app
+- **Google Play Store**: Android app distribution --coming soon
+ 
 
 ## 🤝 Contributing
 
@@ -247,9 +246,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support & Contact
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/dart-scorer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/dart-scorer/discussions)
-- **Email**: your.email@example.com
+- **Email**: cheyseee98@gmail.com
 
 ---
 
