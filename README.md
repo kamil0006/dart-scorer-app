@@ -192,8 +192,6 @@ CREATE TABLE games (
 ### **Target Platforms**
 
 - **Android**: API level 21+ (Android 5.0 Lollipop and above)
-- **iOS**: iOS 13.0 and above
-- **Web**: Progressive Web App support for cross-platform access
 
 ### **Device Requirements**
 
