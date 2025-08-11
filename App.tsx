@@ -13,6 +13,7 @@ import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { db, initDB } from './lib/db';
+import { LanguageProvider, useLanguage } from './lib/LanguageContext';
 import { RootStackParamList } from './navigation/types';
 import GameScreen from './screens/GameScreen';
 
@@ -48,7 +49,9 @@ function PlayStack() {
 /* ----------------------------- bottom-tab root ------------------------------ */
 const Tabs = createBottomTabNavigator();
 
-export default function App() {
+function AppContent() {
+	const { strings } = useLanguage();
+
 	useEffect(() => {
 		initDB();
 		// → sprawdź kolumny
@@ -95,14 +98,14 @@ export default function App() {
 							return <Ionicons name={name as any} size={size} color={color} />;
 						},
 					})}>
-					<Tabs.Screen name='Play' component={PlayStack} options={{ title: 'Gra' }} />
-					<Tabs.Screen name='Stats' component={StatsStackScreen} options={{ title: 'Statystyki' }} />
+					<Tabs.Screen name='Play' component={PlayStack} options={{ title: strings.play }} />
+					<Tabs.Screen name='Stats' component={StatsStackScreen} options={{ title: strings.stats }} />
 
 					<Tabs.Screen
 						name='Settings'
 						component={SettingsScreen}
 						options={{
-							title: 'Ustawienia',
+							title: strings.settings,
 							tabBarIcon: ({ color, size, focused }) => (
 								<Ionicons name={focused ? 'settings' : 'settings-outline'} size={size} color={color} />
 							),
@@ -111,5 +114,13 @@ export default function App() {
 				</Tabs.Navigator>
 			</NavigationContainer>
 		</GestureHandlerRootView>
+	);
+}
+
+export default function App() {
+	return (
+		<LanguageProvider>
+			<AppContent />
+		</LanguageProvider>
 	);
 }

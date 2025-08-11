@@ -11,6 +11,7 @@ import Numpad from '../components/Numpad';
 import ScoreBoard from '../components/ScoreBoard';
 import { getCheckout } from '../lib/checkout';
 import { Dart, saveGame } from '../lib/db';
+import { useLanguage } from '../lib/LanguageContext';
 import { getAdvanced } from '../lib/settings';
 
 const { width } = Dimensions.get('window');
@@ -22,6 +23,7 @@ const OFFSET = -ANG / 2;
 
 export default function GameScreen({ route }: any): React.ReactElement {
 	const { initialScore } = route.params as { initialScore: number };
+	const { strings } = useLanguage();
 
 	const [turns, setTurns] = useState<number[]>([]);
 	const [hits, setHits] = useState<Dart[]>([]);
@@ -194,10 +196,10 @@ export default function GameScreen({ route }: any): React.ReactElement {
 			<StatusBar barStyle='light-content' />
 			<ScrollView contentContainerStyle={styles.scroll}>
 				{/* Forfeit Game button, only show if game is in progress (not over, and there are turns or hits) */}
-				{!gameOver && (turns.length > 0 || hits.length > 0 || gameHits.length > 0) && (
+				{!gameOver && (turns.length > 0 || hits.length > 0) && (
 					<Pressable style={styles.forfeitBtn} onPress={handleForfeit}>
 						<MaterialIcons name='flag' size={20} color='#fff' style={{ marginRight: 6 }} />
-						<Text style={styles.forfeitTxt}>Forfeit Game</Text>
+						<Text style={styles.forfeitTxt}>{strings.forfeit}</Text>
 					</Pressable>
 				)}
 				{advanced && gameOver ? (
@@ -210,7 +212,7 @@ export default function GameScreen({ route }: any): React.ReactElement {
 							setTurnHitCounts([]);
 							setGameOver(false);
 						}}>
-						<Text style={styles.newGameTxt}>Nowa Gra</Text>
+						<Text style={styles.newGameTxt}>{strings.newGameButton}</Text>
 					</Pressable>
 				) : (
 					<ScoreBoard score={currentScore} average={average3d} checkout={getCheckout(currentScore)} />
@@ -269,13 +271,13 @@ export default function GameScreen({ route }: any): React.ReactElement {
 							<DartboardPicker onSelect={(b, m) => onThrow({ bed: b, m })} />
 						</View>
 						<View style={styles.legend}>
-							<Text style={styles.legendTitle}>Legenda trafień:</Text>
+							<Text style={styles.legendTitle}>{strings.legendTitle}:</Text>
 							<View style={styles.legendItems}>
-								<LegendItem color='#006400' label='1 trafienie' />
-								<LegendItem color='#FBC02D' label='5 trafień' />
-								<LegendItem color='#F57C00' label='10 trafień' />
-								<LegendItem color='#ff69b4' label='15 trafień' />
-								<LegendItem color='#9400d3' label='≥ 20 trafień' />
+								<LegendItem color='#006400' label={strings.legend1Hit} />
+								<LegendItem color='#FBC02D' label={strings.legend5Hits} />
+								<LegendItem color='#F57C00' label={strings.legend10Hits} />
+								<LegendItem color='#ff69b4' label={strings.legend15Hits} />
+								<LegendItem color='#9400d3' label={strings.legend20PlusHits} />
 							</View>
 						</View>
 					</>

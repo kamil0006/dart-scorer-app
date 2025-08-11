@@ -3,18 +3,23 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Dimensions, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 
 import { deleteStatById } from '../database/statsRepository';
 import { clearGames, fetchGames } from '../lib/db';
+import { useLanguage } from '../lib/LanguageContext';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = StackNavigationProp<RootStackParamList>;
 
+const { width, height } = Dimensions.get('window');
+
 export default function StatsScreen() {
 	const [games, setGames] = useState<any[]>([]);
+	const [showSummary, setShowSummary] = useState(false);
 	const navigation = useNavigation<Nav>();
+	const { strings } = useLanguage();
 
 	/* odczyt listy za każdym wejściem */
 	useFocusEffect(
@@ -29,10 +34,10 @@ export default function StatsScreen() {
 
 	/* akcje UI */
 	const handleClearAll = () =>
-		Alert.alert('Usunąć wszystkie statystyki?', 'Operacja nieodwracalna.', [
-			{ text: 'Anuluj', style: 'cancel' },
+		Alert.alert(strings.clearAllConfirm, strings.clearAllMessage, [
+			{ text: strings.cancel, style: 'cancel' },
 			{
-				text: 'Usuń',
+				text: strings.delete,
 				style: 'destructive',
 				onPress: () => {
 					clearGames();
@@ -42,10 +47,10 @@ export default function StatsScreen() {
 		]);
 
 	const handleDeleteOne = (id: number) =>
-		Alert.alert('Usunąć ten wpis?', undefined, [
-			{ text: 'Anuluj', style: 'cancel' },
+		Alert.alert(strings.deleteConfirm, undefined, [
+			{ text: strings.cancel, style: 'cancel' },
 			{
-				text: 'Usuń',
+				text: strings.delete,
 				style: 'destructive',
 				onPress: () => {
 					try {
@@ -82,11 +87,71 @@ export default function StatsScreen() {
 		}),
 		0
 	);
+
 	// Calculate 180s count
 	const count180s = games.reduce((count, g) => {
 		const turns = JSON.parse(g.turns);
 		return count + turns.filter((turn: number) => turn === 180).length;
 	}, 0);
+
+	// Calculate forfeited games count
+	const forfeitedGames = games.filter(g => g.forfeited === 1 || g.forfeited === true).length;
+	const completedGames = played - forfeitedGames;
+
+	// Enhanced statistics for different score ranges
+	const scoreRanges = {
+		'100+': 0,
+		'120+': 0,
+		'140+': 0,
+		'160+': 0,
+		'180': 0,
+	};
+
+	// Mode-specific statistics
+	const modeStats = {
+		simple: { games: 0, avg3: 0, bestAvg: 0, totalDarts: 0, totalScore: 0 },
+		advanced: { games: 0, avg3: 0, bestAvg: 0, totalDarts: 0, totalScore: 0 },
+	};
+
+	// Calculate score ranges and mode statistics
+	games.forEach(game => {
+		const turns = JSON.parse(game.turns);
+		const isAdvanced = game.hits && game.hits !== '[]' && game.hits !== 'null';
+
+		// Count score ranges
+		turns.forEach((turn: number) => {
+			if (turn >= 100) scoreRanges['100+']++;
+			if (turn >= 120) scoreRanges['120+']++;
+			if (turn >= 140) scoreRanges['140+']++;
+			if (turn >= 160) scoreRanges['160+']++;
+			if (turn === 180) scoreRanges['180']++;
+		});
+
+		// Mode-specific calculations
+		if (isAdvanced) {
+			modeStats.advanced.games++;
+			modeStats.advanced.totalDarts += game.darts;
+			modeStats.advanced.totalScore += game.scored;
+			if (game.avg3 > modeStats.advanced.bestAvg) {
+				modeStats.advanced.bestAvg = game.avg3;
+			}
+		} else {
+			modeStats.simple.games++;
+			modeStats.simple.totalDarts += game.darts;
+			modeStats.simple.totalScore += game.scored;
+			if (game.avg3 > modeStats.simple.bestAvg) {
+				modeStats.simple.bestAvg = game.avg3;
+			}
+		}
+	});
+
+	// Calculate mode averages
+	if (modeStats.simple.games > 0) {
+		modeStats.simple.avg3 = (modeStats.simple.totalScore / modeStats.simple.totalDarts) * 3;
+	}
+	if (modeStats.advanced.games > 0) {
+		modeStats.advanced.avg3 = (modeStats.advanced.totalScore / modeStats.advanced.totalDarts) * 3;
+	}
 
 	/* render pojedynczej karty */
 	const renderItem = ({ item }: { item: any }) => (
@@ -125,7 +190,7 @@ export default function StatsScreen() {
 					<View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
 						<MaterialIcons name='flag' size={20} color='#B00020' />
 						<Text style={{ color: '#B00020', fontWeight: 'bold', marginLeft: 4, fontSize: 13 }}>
-							{item.forfeitScore} pts left
+							{item.forfeitScore} {strings.forfeitScoreLeft}
 						</Text>
 					</View>
 				) : null}
@@ -133,31 +198,163 @@ export default function StatsScreen() {
 		</Swipeable>
 	);
 
-	/* ---------- JSX ---------- */
-	return (
-		<View style={styles.container}>
-			<View style={styles.statsSection}>
-				<Text style={styles.sectionHeader}>Podsumowanie</Text>
-				<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.statsContainer}>
-					<View style={styles.statsGrid}>
-						<Stat label='Gier' value={played} icon={'sports-soccer'} />
-						<Stat label='Naj. AVG' value={bestAvg} icon={'star'} />
-						<Stat label='AVG całość' value={allAvg} icon={'insert-chart'} />
-						<Stat label='Lotki łącznie' value={allDarts} icon={'gps-fixed'} />
-						<Stat label='Naj. finish' value={highestCheckout} icon={'trending-up'} />
+	/* Summary Modal Component */
+	const SummaryModal = () => (
+		<Modal
+			visible={showSummary}
+			animationType='slide'
+			presentationStyle='fullScreen'
+			onRequestClose={() => setShowSummary(false)}>
+			<View style={styles.modalContainer}>
+				{/* Header with close button */}
+				<View style={styles.modalHeader}>
+					<Text style={styles.modalTitle}>{strings.summary}</Text>
+					<Pressable style={styles.closeButton} onPress={() => setShowSummary(false)}>
+						<Ionicons name='close' size={24} color='#fff' />
+					</Pressable>
+				</View>
+
+				{/* Full screen summary content */}
+				<ScrollView
+					style={styles.modalContent}
+					showsVerticalScrollIndicator={false}
+					contentContainerStyle={styles.modalScrollContent}>
+					<View style={styles.modalStatsGrid}>
+						<Stat label={strings.games} value={played} icon={'sports-soccer'} />
+						<Stat label={strings.bestAverage} value={bestAvg} icon={'star'} />
+						<Stat label={strings.overallAverage} value={allAvg} icon={'insert-chart'} />
+						<Stat label={strings.totalDarts} value={allDarts} icon={'gps-fixed'} />
+						<Stat label={strings.highestFinish} value={highestCheckout} icon={'trending-up'} />
 						<Stat label='180s' value={count180s} icon={'whatshot'} />
 						<Stat label='501' value={g501} icon={'filter-5'} />
 						<Stat label='301' value={g301} icon={'filter-3'} />
 					</View>
+
+					{/* Additional detailed stats */}
+					<View style={styles.detailedStats}>
+						<Text style={styles.detailedStatsTitle}>{strings.detailedStats}</Text>
+
+						{/* Game distribution */}
+						<View style={styles.statRow}>
+							<Text style={styles.statRowLabel}>{strings.gameDistribution}:</Text>
+							<View style={styles.gameDistribution}>
+								<View style={styles.distributionItem}>
+									<Text style={styles.distributionValue}>{g501}</Text>
+									<Text style={styles.distributionLabel}>501</Text>
+								</View>
+								<View style={styles.distributionItem}>
+									<Text style={styles.distributionValue}>{g301}</Text>
+									<Text style={styles.distributionLabel}>301</Text>
+								</View>
+							</View>
+						</View>
+
+						{/* Game completion stats */}
+						<View style={styles.statRow}>
+							<Text style={styles.statRowLabel}>{strings.gameCompletion}:</Text>
+							<View style={styles.completionStats}>
+								<View style={styles.completionItem}>
+									<Text style={styles.completionValue}>{completedGames}</Text>
+									<Text style={styles.completionLabel}>{strings.completed}</Text>
+								</View>
+								<View style={styles.completionItem}>
+									<Text style={styles.completionValue}>{forfeitedGames}</Text>
+									<Text style={styles.completionLabel}>{strings.forfeited}</Text>
+								</View>
+								<View style={styles.completionItem}>
+									<Text style={styles.completionValue}>
+										{played > 0 ? Math.round((completedGames / played) * 100) : 0}%
+									</Text>
+									<Text style={styles.completionLabel}>{strings.successRate}</Text>
+								</View>
+							</View>
+						</View>
+
+						{/* Score Range Performance */}
+						<View style={styles.statRow}>
+							<Text style={styles.statRowLabel}>{strings.scoreRanges}:</Text>
+							<View style={styles.scoreRangesGrid}>
+								<View style={styles.scoreRangeItem}>
+									<Text style={styles.scoreRangeValue}>{scoreRanges['100+']}</Text>
+									<Text style={styles.scoreRangeLabel}>{strings.score100plus}</Text>
+								</View>
+								<View style={styles.scoreRangeItem}>
+									<Text style={styles.scoreRangeValue}>{scoreRanges['120+']}</Text>
+									<Text style={styles.scoreRangeLabel}>{strings.score120plus}</Text>
+								</View>
+								<View style={styles.scoreRangeItem}>
+									<Text style={styles.scoreRangeValue}>{scoreRanges['140+']}</Text>
+									<Text style={styles.scoreRangeLabel}>{strings.score140plus}</Text>
+								</View>
+								<View style={styles.scoreRangeItem}>
+									<Text style={styles.scoreRangeValue}>{scoreRanges['160+']}</Text>
+									<Text style={styles.scoreRangeLabel}>{strings.score160plus}</Text>
+								</View>
+								<View style={styles.scoreRangeItem}>
+									<Text style={styles.scoreRangeValue}>{scoreRanges['180']}</Text>
+									<Text style={styles.scoreRangeLabel}>{strings.score180}</Text>
+								</View>
+							</View>
+						</View>
+
+						{/* Mode-specific Performance */}
+						<View style={styles.statRow}>
+							<Text style={styles.statRowLabel}>{strings.modeSimple}:</Text>
+							<Text style={styles.statRowValue}>
+								{strings.games}: {modeStats.simple.games} | {strings.average}: {modeStats.simple.avg3.toFixed(1)} |{' '}
+								{strings.best}: {modeStats.simple.bestAvg.toFixed(1)}
+							</Text>
+						</View>
+
+						<View style={styles.statRow}>
+							<Text style={styles.statRowLabel}>{strings.modeAdvanced}:</Text>
+							<Text style={styles.statRowValue}>
+								{strings.games}: {modeStats.advanced.games} | {strings.average}: {modeStats.advanced.avg3.toFixed(1)} |{' '}
+								{strings.best}: {modeStats.advanced.bestAvg.toFixed(1)}
+							</Text>
+						</View>
+
+						{/* Performance metrics */}
+						<View style={styles.statRow}>
+							<Text style={styles.statRowLabel}>{strings.performance}:</Text>
+							<Text style={styles.statRowValue}>
+								{strings.bestAverage}: {bestAvg} | {strings.overallAverage}: {allAvg}
+							</Text>
+						</View>
+
+						{/* Achievements */}
+						<View style={styles.statRow}>
+							<Text style={styles.statRowLabel}>{strings.achievements}:</Text>
+							<Text style={styles.statRowValue}>
+								{strings.highestFinish}: {highestCheckout} | 180s: {count180s}
+							</Text>
+						</View>
+					</View>
 				</ScrollView>
 			</View>
+		</Modal>
+	);
 
+	/* ---------- JSX ---------- */
+	return (
+		<View style={styles.container}>
+			{/* Collapsible Summary Button */}
+			<Pressable style={styles.summaryButton} onPress={() => setShowSummary(true)}>
+				<MaterialIcons name='analytics' size={24} color='#8AB4F8' />
+				<Text style={styles.summaryButtonText}>{strings.showSummary}</Text>
+				<Ionicons name='chevron-up' size={20} color='#8AB4F8' />
+			</Pressable>
+
+			{/* Games List */}
 			<FlatList
 				data={games}
 				keyExtractor={g => g.id.toString()}
 				contentContainerStyle={{ paddingBottom: 80 }}
 				renderItem={renderItem}
 			/>
+
+			{/* Summary Modal */}
+			<SummaryModal />
 		</View>
 	);
 }
@@ -300,5 +497,147 @@ const styles = StyleSheet.create({
 		padding: 16,
 		marginBottom: 20,
 		elevation: 2,
+	},
+	// New styles for collapsible summary
+	summaryButton: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: '#1A1A1A',
+		borderRadius: 12,
+		padding: 16,
+		marginBottom: 20,
+		gap: 8,
+	},
+	summaryButtonText: {
+		color: '#8AB4F8',
+		fontSize: 16,
+		fontWeight: '600',
+	},
+	// Modal styles
+	modalContainer: {
+		flex: 1,
+		backgroundColor: '#121212',
+	},
+	modalHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		padding: 20,
+		paddingTop: 60,
+		borderBottomWidth: 1,
+		borderBottomColor: '#333',
+	},
+	modalTitle: {
+		color: '#8AB4F8',
+		fontSize: 24,
+		fontWeight: '700',
+	},
+	closeButton: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		backgroundColor: '#333',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: {
+		flex: 1,
+	},
+	modalScrollContent: {
+		padding: 20,
+		paddingBottom: 40,
+	},
+	modalStatsGrid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		justifyContent: 'center',
+		gap: 16,
+		marginBottom: 40,
+	},
+	detailedStats: {
+		backgroundColor: '#1A1A1A',
+		borderRadius: 16,
+		padding: 20,
+	},
+	detailedStatsTitle: {
+		color: '#8AB4F8',
+		fontSize: 20,
+		fontWeight: '700',
+		marginBottom: 20,
+		textAlign: 'center',
+	},
+	statRow: {
+		marginBottom: 16,
+		paddingBottom: 16,
+		borderBottomWidth: 1,
+		borderBottomColor: '#333',
+	},
+	statRowLabel: {
+		color: '#fff',
+		fontSize: 16,
+		fontWeight: '600',
+		marginBottom: 8,
+	},
+	statRowValue: {
+		color: '#ccc',
+		fontSize: 14,
+		lineHeight: 20,
+	},
+	gameDistribution: {
+		flexDirection: 'row',
+		gap: 20,
+		marginTop: 8,
+	},
+	distributionItem: {
+		alignItems: 'center',
+	},
+	distributionValue: {
+		color: '#8AB4F8',
+		fontSize: 24,
+		fontWeight: 'bold',
+	},
+	distributionLabel: {
+		color: '#ccc',
+		fontSize: 14,
+		marginTop: 4,
+	},
+	scoreRangesGrid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		justifyContent: 'center',
+		gap: 10,
+		marginTop: 8,
+	},
+	scoreRangeItem: {
+		alignItems: 'center',
+	},
+	scoreRangeValue: {
+		color: '#8AB4F8',
+		fontSize: 24,
+		fontWeight: 'bold',
+	},
+	scoreRangeLabel: {
+		color: '#ccc',
+		fontSize: 14,
+		marginTop: 4,
+	},
+	completionStats: {
+		flexDirection: 'row',
+		justifyContent: 'space-around',
+		marginTop: 8,
+	},
+	completionItem: {
+		alignItems: 'center',
+	},
+	completionValue: {
+		color: '#8AB4F8',
+		fontSize: 24,
+		fontWeight: 'bold',
+	},
+	completionLabel: {
+		color: '#ccc',
+		fontSize: 14,
+		marginTop: 4,
 	},
 });
