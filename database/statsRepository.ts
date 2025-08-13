@@ -6,7 +6,7 @@ export function deleteStatById(id: number) {
 
 // Enhanced statistics for both modes
 export function getComprehensiveStats() {
-	const games = db.getAllSync('SELECT * FROM games ORDER BY id DESC;');
+	const games = db.getAllSync('SELECT * FROM games ORDER BY id DESC;') as any[];
 
 	if (games.length === 0) {
 		return {
@@ -30,8 +30,8 @@ export function getComprehensiveStats() {
 	// Mode detection and counting
 	const modeStats = { simple: 0, advanced: 0 };
 	const modePerformance = {
-		simple: { games: 0, totalDarts: 0, totalScore: 0, bestAvg: 0 },
-		advanced: { games: 0, totalDarts: 0, totalScore: 0, bestAvg: 0 },
+		simple: { games: 0, totalDarts: 0, totalScore: 0, bestAvg: 0, avg3: 0 },
+		advanced: { games: 0, totalDarts: 0, totalScore: 0, bestAvg: 0, avg3: 0 },
 	};
 
 	// Performance tracking
@@ -46,8 +46,8 @@ export function getComprehensiveStats() {
 	const scoreRanges = { '100+': 0, '120+': 0, '140+': 0, '160+': 0, '180': 0 };
 
 	// Game completion
-	let completed = 0;
-	let forfeited = 0;
+	let completed: number = 0;
+	let forfeited: number = 0;
 
 	// Game length tracking
 	const gameLengths: number[] = [];
@@ -187,7 +187,7 @@ function calculateCheckoutValue(checkout: string): number {
 
 // Get mode-specific statistics
 export function getModeSpecificStats() {
-	const games = db.getAllSync('SELECT * FROM games ORDER BY id DESC;');
+	const games = db.getAllSync('SELECT * FROM games ORDER BY id DESC;') as any[];
 
 	const modeStats = {
 		simple: { games: 0, avg3: 0, bestAvg: 0, totalDarts: 0, totalScore: 0, variants: { '301': 0, '501': 0 } },
