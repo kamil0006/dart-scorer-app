@@ -81,34 +81,50 @@ export function getTrainingStats(): TrainingStats {
 		};
 	}
 
+	// Single pass through sessions for better performance
+	const stats = sessions.reduce(
+		(acc, session) => {
+			acc.totalTargets += session.targets;
+			acc.totalHits += session.hits;
+			acc.totalDuration += session.duration;
+
+			// Track best session
+			if (!acc.bestSession || session.successRate > acc.bestSession.successRate) {
+				acc.bestSession = session;
+			}
+
+			// Count target practice frequency
+			session.targetsPracticed.forEach(target => {
+				acc.targetCounts[target] = (acc.targetCounts[target] || 0) + 1;
+			});
+
+			return acc;
+		},
+		{
+			totalTargets: 0,
+			totalHits: 0,
+			totalDuration: 0,
+			bestSession: null as TrainingSession | null,
+			targetCounts: {} as { [key: string]: number },
+		}
+	);
+
 	const totalSessions = sessions.length;
-	const totalTargets = sessions.reduce((sum, s) => sum + s.targets, 0);
-	const totalHits = sessions.reduce((sum, s) => sum + s.hits, 0);
-	const overallSuccessRate = totalTargets > 0 ? (totalHits / totalTargets) * 100 : 0;
+	const overallSuccessRate = stats.totalTargets > 0 ? (stats.totalHits / stats.totalTargets) * 100 : 0;
+	const averageSessionLength = stats.totalDuration / totalSessions;
 
-	const bestSession = sessions.reduce((best, current) => (current.successRate > best.successRate ? current : best));
-
-	const averageSessionLength = sessions.reduce((sum, s) => sum + s.duration, 0) / totalSessions;
-
-	// Count most practiced targets
-	const targetCounts: { [key: string]: number } = {};
-	sessions.forEach(session => {
-		session.targetsPracticed.forEach(target => {
-			targetCounts[target] = (targetCounts[target] || 0) + 1;
-		});
-	});
-
-	const mostPracticedTargets = Object.entries(targetCounts)
+	// Get top 5 most practiced targets
+	const mostPracticedTargets = Object.entries(stats.targetCounts)
 		.map(([target, count]) => ({ target, count }))
 		.sort((a, b) => b.count - a.count)
 		.slice(0, 5);
 
 	return {
 		totalSessions,
-		totalTargets,
-		totalHits,
+		totalTargets: stats.totalTargets,
+		totalHits: stats.totalHits,
 		overallSuccessRate: Math.round(overallSuccessRate * 10) / 10,
-		bestSession,
+		bestSession: stats.bestSession,
 		averageSessionLength: Math.round(averageSessionLength),
 		mostPracticedTargets,
 	};

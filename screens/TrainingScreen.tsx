@@ -1,5 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { saveTrainingSession, TrainingSession } from '../database/trainingRepository';
 import { useLanguage } from '../lib/LanguageContext';
@@ -26,61 +26,68 @@ export default function TrainingScreen() {
 	const [targetsPracticed, setTargetsPracticed] = useState<string[]>([]);
 	const [targetResults, setTargetResults] = useState<{ target: string; hit: boolean }[]>([]);
 
-	// Generate a new random target
-	const generateTarget = () => {
-		const targetTypes: TargetType[] = ['single', 'double', 'triple'];
-		const type = targetTypes[Math.floor(Math.random() * targetTypes.length)];
+	// Constants for target generation
+	const TARGET_TYPES: TargetType[] = ['single', 'double', 'triple'];
+	const MAX_TARGET_VALUE = 20;
 
-		let value: number;
+	// Generate a new random target
+	const generateTarget = useCallback(() => {
+		const type = TARGET_TYPES[Math.floor(Math.random() * TARGET_TYPES.length)];
+		const value = Math.floor(Math.random() * MAX_TARGET_VALUE) + 1;
+
 		let display: string;
 		let points: number;
 
 		switch (type) {
 			case 'single':
-				value = Math.floor(Math.random() * 20) + 1;
 				display = value.toString();
 				points = value;
 				break;
 			case 'double':
-				value = Math.floor(Math.random() * 20) + 1;
 				display = `D${value}`;
 				points = value * 2;
 				break;
 			case 'triple':
-				value = Math.floor(Math.random() * 20) + 1;
 				display = `T${value}`;
 				points = value * 3;
 				break;
 		}
 
 		setCurrentTarget({ value, type, display, points });
-	};
+	}, []);
 
 	// Handle hit/miss
-	const handleResult = (hit: boolean) => {
-		if (!currentTarget) return;
+	const handleResult = useCallback(
+		(hit: boolean) => {
+			if (!currentTarget) return;
 
-		// Track practiced targets
-		if (!targetsPracticed.includes(currentTarget.display)) {
-			setTargetsPracticed(prev => [...prev, currentTarget.display]);
-		}
+			const targetDisplay = currentTarget.display;
 
-		// Track individual target results
-		setTargetResults(prev => [...prev, { target: currentTarget.display, hit }]);
+			// Track practiced targets (only if not already practiced)
+			setTargetsPracticed(prev => (prev.includes(targetDisplay) ? prev : [...prev, targetDisplay]));
 
-		setSessionStats(prev => ({
-			...prev,
-			targets: prev.targets + 1,
-			hits: hit ? prev.hits + 1 : prev.hits,
-			misses: hit ? prev.misses : prev.misses + 1,
-		}));
+			// Track individual target results
+			setTargetResults(prev => [...prev, { target: targetDisplay, hit }]);
 
-		// Generate next target immediately
-		generateTarget();
-	};
+			// Update session stats
+			setSessionStats(prev => ({
+				...prev,
+				targets: prev.targets + 1,
+				hits: prev.hits + (hit ? 1 : 0),
+				misses: prev.misses + (hit ? 0 : 1),
+			}));
+
+			// Generate next target immediately
+			generateTarget();
+		},
+		[currentTarget, generateTarget]
+	);
 
 	// Calculate success rate
-	const successRate = sessionStats.targets > 0 ? Math.round((sessionStats.hits / sessionStats.targets) * 100) : 0;
+	const successRate = useMemo(
+		() => (sessionStats.targets > 0 ? Math.round((sessionStats.hits / sessionStats.targets) * 100) : 0),
+		[sessionStats.targets, sessionStats.hits]
+	);
 
 	// Calculate session duration starting from 0
 	const [sessionDuration, setSessionDuration] = useState(0);
@@ -106,20 +113,26 @@ export default function TrainingScreen() {
 		return () => clearInterval(interval);
 	}, [sessionStarted, sessionStats.startTime]);
 
-	// Start training session
-	const startSession = () => {
-		setSessionStarted(true);
-		setSessionStats({
+	// Initial session state
+	const initialSessionStats = useMemo(
+		() => ({
 			targets: 0,
 			hits: 0,
 			misses: 0,
 			startTime: Date.now(),
-		});
+		}),
+		[]
+	);
+
+	// Start training session
+	const startSession = useCallback(() => {
+		setSessionStarted(true);
+		setSessionStats(initialSessionStats);
 		setTargetsPracticed([]);
 		setTargetResults([]);
 		setSessionDuration(0);
 		generateTarget();
-	};
+	}, [initialSessionStats, generateTarget]);
 
 	// Save training session
 	const saveSession = async () => {
@@ -179,19 +192,14 @@ export default function TrainingScreen() {
 	};
 
 	// Reset session data
-	const resetSessionData = () => {
+	const resetSessionData = useCallback(() => {
 		setSessionStarted(false);
-		setSessionStats({
-			targets: 0,
-			hits: 0,
-			misses: 0,
-			startTime: Date.now(),
-		});
+		setSessionStats(initialSessionStats);
 		setTargetsPracticed([]);
 		setTargetResults([]);
 		setCurrentTarget(null);
 		setSessionDuration(0);
-	};
+	}, [initialSessionStats]);
 
 	// Note: Debug functions removed - training sessions now appear in Statistics tab
 

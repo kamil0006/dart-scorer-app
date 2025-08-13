@@ -561,23 +561,27 @@ export default function StatsScreen() {
 														<Text style={styles.targetsPracticedTitle}>{strings.targetsPracticed}:</Text>
 														<View style={styles.targetsPracticedGrid}>
 															{item.targetsPracticed.map((target, index) => {
-																const isSingle = /^\d+$/.test(target);
-																const isDouble = target.startsWith('D');
-																const isTriple = target.startsWith('T');
+																// Optimize target type detection
+																const targetType = target.startsWith('D')
+																	? 'double'
+																	: target.startsWith('T')
+																	? 'triple'
+																	: 'single';
 
 																// Check if this specific target was missed
 																const targetResult = item.targetResults?.find(result => result.target === target);
 																const wasMissed = targetResult ? !targetResult.hit : false;
 
+																// Determine chip style based on type and result
+																const chipStyle = [
+																	styles.targetChip,
+																	targetType === 'single' && (wasMissed ? styles.singleChipMissed : styles.singleChip),
+																	targetType === 'double' && (wasMissed ? styles.doubleChipMissed : styles.doubleChip),
+																	targetType === 'triple' && (wasMissed ? styles.tripleChipMissed : styles.tripleChip),
+																];
+
 																return (
-																	<View
-																		key={index}
-																		style={[
-																			styles.targetChip,
-																			isSingle && (wasMissed ? styles.singleChipMissed : styles.singleChip),
-																			isDouble && (wasMissed ? styles.doubleChipMissed : styles.doubleChip),
-																			isTriple && (wasMissed ? styles.tripleChipMissed : styles.tripleChip),
-																		]}>
+																	<View key={target} style={chipStyle}>
 																		<Text style={styles.targetChipText}>{target}</Text>
 																	</View>
 																);
