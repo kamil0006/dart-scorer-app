@@ -6,8 +6,9 @@ import React, { useCallback, useState } from 'react';
 import { Alert, Dimensions, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 
-import { deleteStatById } from '../database/statsRepository';
-import { clearGames, fetchGames } from '../lib/db';
+import { deleteStatById, getComprehensiveStats } from '../database/statsRepository';
+import { getTrainingSessions, getTrainingStats } from '../database/trainingRepository';
+import { clearGames, db, fetchGames } from '../lib/db';
 import { useLanguage } from '../lib/LanguageContext';
 import { RootStackParamList } from '../navigation/types';
 
@@ -17,7 +18,10 @@ const { width, height } = Dimensions.get('window');
 
 export default function StatsScreen() {
 	const [games, setGames] = useState<any[]>([]);
+	const [comprehensiveStats, setComprehensiveStats] = useState<any>(null);
+	const [trainingStats, setTrainingStats] = useState<any>(null);
 	const [showSummary, setShowSummary] = useState(false);
+	const [showTrainingDetails, setShowTrainingDetails] = useState(false);
 	const navigation = useNavigation<Nav>();
 	const { strings } = useLanguage();
 
@@ -25,7 +29,18 @@ export default function StatsScreen() {
 	useFocusEffect(
 		useCallback(() => {
 			try {
-				setGames(fetchGames());
+				const fetchedGames = fetchGames();
+				setGames(fetchedGames);
+				setComprehensiveStats(getComprehensiveStats());
+
+				// Fetch training statistics
+				try {
+					const trainingData = getTrainingStats();
+					setTrainingStats(trainingData);
+				} catch (trainingError) {
+					console.warn('Training stats error:', trainingError);
+					setTrainingStats(null);
+				}
 			} catch (e) {
 				console.warn('DB read error:', e);
 			}
@@ -42,6 +57,7 @@ export default function StatsScreen() {
 				onPress: () => {
 					clearGames();
 					setGames([]);
+					setComprehensiveStats(null);
 				},
 			},
 		]);
@@ -56,8 +72,26 @@ export default function StatsScreen() {
 					try {
 						deleteStatById(id);
 						setGames(prev => prev.filter(g => g.id !== id));
+						setComprehensiveStats(getComprehensiveStats());
 					} catch (e) {
 						console.warn('Delete stat error:', e);
+					}
+				},
+			},
+		]);
+
+	const handleDeleteTrainingSession = (id: number) =>
+		Alert.alert(strings.deleteConfirm, undefined, [
+			{ text: strings.cancel, style: 'cancel' },
+			{
+				text: strings.delete,
+				style: 'destructive',
+				onPress: () => {
+					try {
+						db.runSync('DELETE FROM training_sessions WHERE id = ?', [id]);
+						setTrainingStats(getTrainingStats());
+					} catch (e) {
+						console.warn('Delete training session error:', e);
 					}
 				},
 			},
@@ -184,6 +218,11 @@ export default function StatsScreen() {
 
 				<View style={styles.variant}>
 					<Text style={styles.variantTxt}>{item.start}</Text>
+					{item.hits && item.hits !== '[]' && item.hits !== 'null' && (
+						<View style={styles.advancedIndicator}>
+							<Text style={{ color: '#8AB4F8', fontSize: 8, fontWeight: 'bold' }}>A</Text>
+						</View>
+					)}
 				</View>
 
 				{item.forfeited === 1 || (item.forfeited === true && item.forfeitScore != null) ? (
@@ -228,6 +267,36 @@ export default function StatsScreen() {
 						<Stat label='180s' value={count180s} icon={'whatshot'} />
 						<Stat label='501' value={g501} icon={'filter-5'} />
 						<Stat label='301' value={g301} icon={'filter-3'} />
+						{comprehensiveStats && (
+							<>
+								<Stat
+									label={strings.successRate}
+									value={`${comprehensiveStats.completion.successRate}%`}
+									icon={'check-circle'}
+								/>
+								<Stat label={strings.avgLength} value={comprehensiveStats.gameLength.average} icon={'schedule'} />
+								<Stat label={strings.modeSimple} value={comprehensiveStats.modeStats.simple} icon={'layers'} />
+								<Stat
+									label={strings.modeAdvanced}
+									value={comprehensiveStats.modeStats.advanced}
+									icon={'layers-clear'}
+								/>
+							</>
+						)}
+
+						{/* Training Statistics */}
+						{trainingStats && trainingStats.totalSessions > 0 && (
+							<>
+								<Stat label={strings.trainingSessions} value={trainingStats.totalSessions} icon={'school'} />
+								<Stat
+									label={strings.trainingSuccess}
+									value={`${trainingStats.overallSuccessRate}%`}
+									icon={'check-circle'}
+								/>
+								<Stat label={strings.totalTargets} value={trainingStats.totalTargets} icon={'gps-fixed'} />
+								<Stat label={strings.bestSession} value={`${trainingStats.bestSession?.successRate}%`} icon={'star'} />
+							</>
+						)}
 					</View>
 
 					{/* Additional detailed stats */}
@@ -329,6 +398,74 @@ export default function StatsScreen() {
 								{strings.highestFinish}: {highestCheckout} | 180s: {count180s}
 							</Text>
 						</View>
+
+						{/* Enhanced Statistics */}
+						{comprehensiveStats && (
+							<View style={styles.enhancedStatsSection}>
+								<Text style={styles.enhancedStatsTitle}>{strings.overallPerformance}</Text>
+
+								<View style={styles.statRow}>
+									<Text style={styles.statRowLabel}>{strings.gameLength}:</Text>
+									<View style={styles.completionStats}>
+										<View style={styles.completionItem}>
+											<Text style={styles.completionValue}>{comprehensiveStats.gameLength.shortest}</Text>
+											<Text style={styles.completionLabel}>{strings.shortest}</Text>
+										</View>
+										<View style={styles.completionItem}>
+											<Text style={styles.completionValue}>{comprehensiveStats.gameLength.longest}</Text>
+											<Text style={styles.completionLabel}>{strings.longest}</Text>
+										</View>
+										<View style={styles.completionItem}>
+											<Text style={styles.completionValue}>{comprehensiveStats.gameLength.average}</Text>
+											<Text style={styles.completionLabel}>{strings.avgLength}</Text>
+										</View>
+									</View>
+								</View>
+
+								<View style={styles.statRow}>
+									<Text style={styles.statRowLabel}>{strings.modeComparison}:</Text>
+									<View style={styles.gameDistribution}>
+										<View style={styles.distributionItem}>
+											<Text style={styles.distributionValue}>{comprehensiveStats.modeStats.simple}</Text>
+											<Text style={styles.distributionLabel}>{strings.modeSimple}</Text>
+										</View>
+										<View style={styles.distributionItem}>
+											<Text style={styles.distributionValue}>{comprehensiveStats.modeStats.advanced}</Text>
+											<Text style={styles.distributionLabel}>{strings.modeAdvanced}</Text>
+										</View>
+									</View>
+								</View>
+							</View>
+						)}
+
+						{/* Recent Trends - Smaller Section */}
+						{comprehensiveStats && (
+							<View style={styles.recentTrendsSection}>
+								<Text style={styles.recentTrendsTitle}>{strings.recentTrends}</Text>
+								<View style={styles.recentTrendsGrid}>
+									<View style={styles.recentTrendsItem}>
+										<Text style={styles.recentTrendsLabel}>{strings.last5Games}</Text>
+										<Text style={styles.recentTrendsValue}>
+											{comprehensiveStats.recentTrends.last5Games.length > 0
+												? comprehensiveStats.recentTrends.last5Games.filter((g: any) => g.completed).length +
+												  '/' +
+												  comprehensiveStats.recentTrends.last5Games.length
+												: '0/0'}
+										</Text>
+									</View>
+									<View style={styles.recentTrendsItem}>
+										<Text style={styles.recentTrendsLabel}>{strings.last10Games}</Text>
+										<Text style={styles.recentTrendsValue}>
+											{comprehensiveStats.recentTrends.last10Games.length > 0
+												? comprehensiveStats.recentTrends.last10Games.filter((g: any) => g.completed).length +
+												  '/' +
+												  comprehensiveStats.recentTrends.last10Games.length
+												: '0/0'}
+										</Text>
+									</View>
+								</View>
+							</View>
+						)}
 					</View>
 				</ScrollView>
 			</View>
@@ -344,6 +481,119 @@ export default function StatsScreen() {
 				<Text style={styles.summaryButtonText}>{strings.showSummary}</Text>
 				<Ionicons name='chevron-up' size={20} color='#8AB4F8' />
 			</Pressable>
+
+			{/* Collapsible Training Sessions Section */}
+			{trainingStats && trainingStats.totalSessions > 0 && (
+				<View style={styles.trainingSection}>
+					<Pressable style={styles.trainingHeader} onPress={() => setShowTrainingDetails(!showTrainingDetails)}>
+						<View style={styles.trainingHeaderContent}>
+							<MaterialIcons name='school' size={24} color='#8AB4F8' />
+							<Text style={styles.trainingHeaderTitle}>{strings.trainingSessions}</Text>
+							<Text style={styles.trainingHeaderStats}>
+								{trainingStats.totalSessions} {strings.games} •{' '}
+								<Text
+									style={[trainingStats.overallSuccessRate >= 50 ? styles.successRateGood : styles.successRatePoor]}>
+									{trainingStats.overallSuccessRate}%
+								</Text>{' '}
+								{strings.successRate}
+							</Text>
+						</View>
+						<MaterialIcons name={showTrainingDetails ? 'expand-less' : 'expand-more'} size={24} color='#8AB4F8' />
+					</Pressable>
+
+					{/* Training Sessions Details */}
+					{showTrainingDetails && (
+						<View style={styles.trainingDetails}>
+							<FlatList
+								data={getTrainingSessions().slice(0, 10)} // Show last 10 training sessions
+								keyExtractor={session => session.id?.toString() || Math.random().toString()}
+								showsVerticalScrollIndicator={false}
+								renderItem={({ item }) => (
+									<Swipeable
+										renderRightActions={() => (
+											<Pressable style={styles.deleteAction} onPress={() => handleDeleteTrainingSession(item.id!)}>
+												<View style={styles.deleteCircle}>
+													<Ionicons name='trash' size={18} color='#fff' />
+												</View>
+											</Pressable>
+										)}>
+										<View style={styles.trainingSessionCard}>
+											<Pressable
+												style={styles.trainingSessionContent}
+												onPress={() => setShowTrainingDetails(false)} // Close when session selected
+											>
+												<View style={styles.trainingSessionHeader}>
+													<Text style={styles.trainingSessionDate}>{item.date.slice(0, 10)}</Text>
+													<Text style={styles.trainingSessionTime}>
+														{new Date(item.date).toLocaleTimeString().slice(0, 5)}
+													</Text>
+													<Text
+														style={[
+															styles.trainingSessionSuccess,
+															item.successRate >= 50 ? styles.successRateGood : styles.successRatePoor,
+														]}>
+														{item.successRate}%
+													</Text>
+												</View>
+
+												<View style={styles.trainingSessionStats}>
+													<View style={styles.trainingStatItem}>
+														<Text style={styles.trainingStatLabel}>{strings.targets}</Text>
+														<Text style={styles.trainingStatValue}>{item.targets}</Text>
+													</View>
+													<View style={styles.trainingStatItem}>
+														<Text style={styles.trainingStatLabel}>{strings.hits}</Text>
+														<Text style={styles.trainingStatValue}>{item.hits}</Text>
+													</View>
+													<View style={styles.trainingStatItem}>
+														<Text style={styles.trainingStatLabel}>{strings.misses}</Text>
+														<Text style={[styles.trainingStatValue, styles.missedValue]}>{item.misses}</Text>
+													</View>
+													<View style={styles.trainingStatItem}>
+														<Text style={styles.trainingStatLabel}>{strings.duration}</Text>
+														<Text style={styles.trainingStatValue}>{Math.floor(item.duration / 60)}m</Text>
+													</View>
+												</View>
+
+												{/* Targets Practiced */}
+												{item.targetsPracticed && item.targetsPracticed.length > 0 && (
+													<View style={styles.targetsPracticedSection}>
+														<Text style={styles.targetsPracticedTitle}>{strings.targetsPracticed}:</Text>
+														<View style={styles.targetsPracticedGrid}>
+															{item.targetsPracticed.map((target, index) => {
+																const isSingle = /^\d+$/.test(target);
+																const isDouble = target.startsWith('D');
+																const isTriple = target.startsWith('T');
+
+																// Check if this specific target was missed
+																const targetResult = item.targetResults?.find(result => result.target === target);
+																const wasMissed = targetResult ? !targetResult.hit : false;
+
+																return (
+																	<View
+																		key={index}
+																		style={[
+																			styles.targetChip,
+																			isSingle && (wasMissed ? styles.singleChipMissed : styles.singleChip),
+																			isDouble && (wasMissed ? styles.doubleChipMissed : styles.doubleChip),
+																			isTriple && (wasMissed ? styles.tripleChipMissed : styles.tripleChip),
+																		]}>
+																		<Text style={styles.targetChipText}>{target}</Text>
+																	</View>
+																);
+															})}
+														</View>
+													</View>
+												)}
+											</Pressable>
+										</View>
+									</Swipeable>
+								)}
+							/>
+						</View>
+					)}
+				</View>
+			)}
 
 			{/* Games List */}
 			<FlatList
@@ -507,6 +757,7 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		padding: 16,
 		marginBottom: 20,
+		marginTop: 20,
 		gap: 8,
 	},
 	summaryButtonText: {
@@ -639,5 +890,187 @@ const styles = StyleSheet.create({
 		color: '#ccc',
 		fontSize: 14,
 		marginTop: 4,
+	},
+	enhancedStatsSection: {
+		backgroundColor: '#23272E',
+		borderRadius: 16,
+		padding: 20,
+		marginTop: 20,
+		borderLeftWidth: 4,
+		borderLeftColor: '#8AB4F8',
+	},
+	enhancedStatsTitle: {
+		color: '#8AB4F8',
+		fontSize: 18,
+		fontWeight: '700',
+		marginBottom: 16,
+		textAlign: 'center',
+	},
+	recentTrendsSection: {
+		backgroundColor: '#1A1A1A',
+		borderRadius: 12,
+		padding: 16,
+		marginTop: 16,
+		marginBottom: 20,
+	},
+	recentTrendsTitle: {
+		color: '#8AB4F8',
+		fontSize: 16,
+		fontWeight: '600',
+		marginBottom: 12,
+		textAlign: 'center',
+	},
+	recentTrendsGrid: {
+		flexDirection: 'row',
+		justifyContent: 'space-around',
+		alignItems: 'center',
+	},
+	recentTrendsItem: {
+		alignItems: 'center',
+		flex: 1,
+	},
+	recentTrendsLabel: {
+		color: '#ccc',
+		fontSize: 12,
+		marginBottom: 4,
+		textAlign: 'center',
+	},
+	recentTrendsValue: {
+		color: '#8AB4F8',
+		fontSize: 18,
+		fontWeight: 'bold',
+	},
+	// Training section styles
+	trainingSection: {
+		marginBottom: 20,
+	},
+	trainingHeader: {
+		backgroundColor: '#1A1A1A',
+		borderRadius: 12,
+		padding: 16,
+		marginBottom: 8,
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+	},
+	trainingHeaderContent: {
+		flex: 1,
+	},
+	trainingHeaderTitle: {
+		color: '#8AB4F8',
+		fontSize: 18,
+		fontWeight: 'bold',
+		marginBottom: 4,
+	},
+	trainingHeaderStats: {
+		color: '#ccc',
+		fontSize: 14,
+	},
+	trainingDetails: {
+		backgroundColor: '#1A1A1A',
+		borderRadius: 12,
+		padding: 16,
+		maxHeight: 400,
+	},
+	trainingSessionCard: {
+		backgroundColor: '#23272E',
+		borderRadius: 10,
+		padding: 16,
+		marginBottom: 12,
+		borderWidth: 1,
+		borderColor: '#333',
+	},
+	trainingSessionHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 12,
+	},
+	trainingSessionDate: {
+		color: '#8AB4F8',
+		fontSize: 16,
+		fontWeight: '600',
+	},
+	trainingSessionTime: {
+		color: '#888',
+		fontSize: 14,
+	},
+	trainingSessionSuccess: {
+		color: '#4CAF50',
+		fontSize: 18,
+		fontWeight: 'bold',
+	},
+	successRateGood: {
+		color: '#4CAF50', // Green for good success rate
+	},
+	successRatePoor: {
+		color: '#FF6B6B', // Red for poor success rate
+	},
+	trainingSessionStats: {
+		flexDirection: 'row',
+		justifyContent: 'space-around',
+		marginBottom: 16,
+	},
+	trainingStatItem: {
+		alignItems: 'center',
+	},
+	trainingStatLabel: {
+		color: '#ccc',
+		fontSize: 12,
+		marginBottom: 4,
+	},
+	trainingStatValue: {
+		color: '#fff',
+		fontSize: 16,
+		fontWeight: 'bold',
+	},
+	targetsPracticedSection: {
+		marginTop: 8,
+	},
+	targetsPracticedTitle: {
+		color: '#ccc',
+		fontSize: 14,
+		marginBottom: 8,
+		fontWeight: '600',
+	},
+	targetsPracticedGrid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+	},
+	targetChip: {
+		backgroundColor: '#8AB4F8',
+		borderRadius: 16,
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+	},
+	targetChipText: {
+		color: '#fff',
+		fontSize: 12,
+		fontWeight: '600',
+	},
+	missedValue: {
+		color: '#FF6B6B', // Red color for missed targets
+	},
+	singleChip: {
+		backgroundColor: '#8AB4F8', // Blue for single targets (previous color)
+	},
+	doubleChip: {
+		backgroundColor: '#8AB4F8', // Blue for double targets (previous color)
+	},
+	tripleChip: {
+		backgroundColor: '#8AB4F8', // Blue for triple targets (previous color)
+	},
+	singleChipMissed: {
+		backgroundColor: '#FF6B6B', // Red for missed single targets
+	},
+	doubleChipMissed: {
+		backgroundColor: '#FF6B6B', // Red for missed double targets
+	},
+	tripleChipMissed: {
+		backgroundColor: '#FF6B6B', // Red for missed triple targets
+	},
+	trainingSessionContent: {
+		flex: 1,
 	},
 });

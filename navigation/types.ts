@@ -14,4 +14,5 @@ export type RootStackParamList = {
 		forfeitScore?: number;
 	};
 	Heatmap: undefined;
+	Training: undefined;
 };

@@ -3,6 +3,28 @@
 import * as SQLite from 'expo-sqlite';
 export const db = SQLite.openDatabaseSync('dart.db');
 
+// Initialize training table directly to avoid circular imports
+function initTrainingTable() {
+	try {
+		db.execSync(`
+			CREATE TABLE IF NOT EXISTS training_sessions (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				date TEXT NOT NULL,
+				targets INTEGER NOT NULL,
+				hits INTEGER NOT NULL,
+				misses INTEGER NOT NULL,
+				duration INTEGER NOT NULL,
+				success_rate REAL NOT NULL,
+				targets_practiced TEXT NOT NULL,
+				target_results TEXT
+			);
+		`);
+		console.log('Training table initialized successfully');
+	} catch (error) {
+		console.error('Failed to initialize training table:', error);
+	}
+}
+
 /** Dart pojedynczy rzut */
 export type Dart = { bed: number; m: 1 | 2 | 3 };
 
@@ -20,36 +42,68 @@ type GameInput = {
 /* 2. Inicjalizacja bazy                                                     */
 /* ------------------------------------------------------------------------- */
 export function initDB() {
-	db.execSync(`
-	  PRAGMA journal_mode = WAL;
-	  CREATE TABLE IF NOT EXISTS games (
-		id       INTEGER PRIMARY KEY NOT NULL,
-		date     TEXT,
-		start    INTEGER,
-		turns    TEXT,
-		darts    INTEGER,
-		scored   INTEGER,
-		avg3     REAL,
-		checkout TEXT,
-		hits TEXT,
-		forfeited INTEGER DEFAULT 0,
-		forfeitScore INTEGER DEFAULT NULL
-	  );
-	`);
+	try {
+		console.log('Initializing database...');
+
+		db.execSync(`
+		  PRAGMA journal_mode = WAL;
+		  CREATE TABLE IF NOT EXISTS games (
+			id       INTEGER PRIMARY KEY NOT NULL,
+			date     TEXT,
+			start    INTEGER,
+			turns    TEXT,
+			darts    INTEGER,
+			scored   INTEGER,
+			avg3     REAL,
+			checkout TEXT,
+			hits TEXT,
+			forfeited INTEGER DEFAULT 0,
+			forfeitScore INTEGER DEFAULT NULL
+		  );
+		`);
+
+		console.log('Games table initialized successfully');
+
+		// Initialize training database (avoid circular import)
+		initTrainingTable();
+
+		console.log('Database initialization complete');
+	} catch (error) {
+		console.error('Database initialization failed:', error);
+	}
 
 	// ⇣ MIGRACJA – jeżeli brakuje kolumny, dodaj ją
-	const rows = db.getAllSync("PRAGMA table_info('games');");
-	const hasHits = rows.some((r: any) => r.name === 'hits');
-	if (!hasHits) {
-		db.runSync("ALTER TABLE games ADD COLUMN hits TEXT DEFAULT '[]';");
+	try {
+		const rows = db.getAllSync("PRAGMA table_info('games');") as any[];
+		const hasHits = rows.some((r: any) => r.name === 'hits');
+		if (!hasHits) {
+			db.runSync("ALTER TABLE games ADD COLUMN hits TEXT DEFAULT '[]';");
+			console.log('Added hits column to games table');
+		}
+		const hasForfeited = rows.some((r: any) => r.name === 'forfeited');
+		if (!hasForfeited) {
+			db.runSync('ALTER TABLE games ADD COLUMN forfeited INTEGER DEFAULT 0;');
+			console.log('Added forfeited column to games table');
+		}
+		const hasForfeitScore = rows.some((r: any) => r.name === 'forfeitScore');
+		if (!hasForfeitScore) {
+			db.runSync('ALTER TABLE games ADD COLUMN forfeitScore INTEGER DEFAULT NULL;');
+			console.log('Added forfeitScore column to games table');
+		}
+	} catch (error) {
+		console.error('Migration failed:', error);
 	}
-	const hasForfeited = rows.some((r: any) => r.name === 'forfeited');
-	if (!hasForfeited) {
-		db.runSync('ALTER TABLE games ADD COLUMN forfeited INTEGER DEFAULT 0;');
-	}
-	const hasForfeitScore = rows.some((r: any) => r.name === 'forfeitScore');
-	if (!hasForfeitScore) {
-		db.runSync('ALTER TABLE games ADD COLUMN forfeitScore INTEGER DEFAULT NULL;');
+
+	// ⇣ MIGRACJA dla training_sessions – dodaj kolumnę target_results
+	try {
+		const trainingRows = db.getAllSync("PRAGMA table_info('training_sessions');") as any[];
+		const hasTargetResults = trainingRows.some((r: any) => r.name === 'target_results');
+		if (!hasTargetResults) {
+			db.runSync("ALTER TABLE training_sessions ADD COLUMN target_results TEXT DEFAULT '[]';");
+			console.log('Added target_results column to training_sessions table');
+		}
+	} catch (error) {
+		console.error('Training table migration failed:', error);
 	}
 }
 

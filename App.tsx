@@ -21,6 +21,7 @@ import NewGameScreen from './screens/NewGameScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import StatsDetailScreen from './screens/StatsDetailScreen';
 import StatsScreen from './screens/StatsScreen';
+import TrainingScreen from './screens/TrainingScreen';
 // w App.tsx, tuż po starcie aplikacji
 
 const StatsStack = createNativeStackNavigator<RootStackParamList>();
@@ -100,6 +101,16 @@ function AppContent() {
 					})}>
 					<Tabs.Screen name='Play' component={PlayStack} options={{ title: strings.play }} />
 					<Tabs.Screen name='Stats' component={StatsStackScreen} options={{ title: strings.stats }} />
+					<Tabs.Screen
+						name='Training'
+						component={TrainingScreen}
+						options={{
+							title: strings.trainingMode,
+							tabBarIcon: ({ color, size, focused }) => (
+								<Ionicons name={focused ? 'school' : 'school-outline'} size={size} color={color} />
+							),
+						}}
+					/>
 
 					<Tabs.Screen
 						name='Settings'

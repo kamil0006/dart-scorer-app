@@ -47,6 +47,19 @@ export interface LocalizedStrings {
 	totalDarts: string;
 	games: string;
 	best: string;
+	// Enhanced Statistics
+	totalGames: string;
+	gameVariants: string;
+	recentTrends: string;
+	gameLength: string;
+	shortest: string;
+	longest: string;
+	avgLength: string;
+	last5Games: string;
+	last10Games: string;
+	bestCheckout: string;
+	overallPerformance: string;
+	modeComparison: string;
 
 	// Score Ranges
 	score100plus: string;
@@ -84,8 +97,14 @@ export interface LocalizedStrings {
 
 	// UI Elements
 	loading: string;
-	error: string;
 	success: string;
+
+	// Training Statistics
+	trainingSessions: string;
+	trainingSuccess: string;
+	totalTargets: string;
+	bestSession: string;
+	targetsPracticed: string;
 	info: string;
 
 	// Legend
@@ -104,6 +123,32 @@ export interface LocalizedStrings {
 	pointsLeft: string;
 	avg: string;
 	darts: string;
+
+	// Training Mode
+	trainingMode: string;
+	practiceTargets: string;
+	currentTarget: string;
+	hitTarget: string;
+	hit: string;
+	miss: string;
+	sessionStats: string;
+	targets: string;
+	hits: string;
+	misses: string;
+	duration: string;
+	minutes: string;
+	newTarget: string;
+	resetSession: string;
+	resetSessionConfirm: string;
+	reset: string;
+	saveSession: string;
+	sessionSaved: string;
+	sessionSavedMessage: string;
+	saveAndReset: string;
+	ok: string;
+	error: string;
+	saveError: string;
+	saveErrorMsg: string;
 }
 
 const polishStrings: LocalizedStrings = {
@@ -210,6 +255,52 @@ const polishStrings: LocalizedStrings = {
 	pointsLeft: 'Punkty pozostałe',
 	avg: 'Średnia',
 	darts: 'Lotki',
+
+	// Enhanced Statistics
+	totalGames: 'Łącznie gier',
+	gameVariants: 'Warianty gier',
+	recentTrends: 'Ostatnie trendy',
+	gameLength: 'Długość gier',
+	shortest: 'Najkrótsza',
+	longest: 'Najdłuższa',
+	avgLength: 'Średnia',
+	last5Games: 'Ostatnie 5 gier',
+	last10Games: 'Ostatnie 10 gier',
+	bestCheckout: 'Najlepszy finish',
+	overallPerformance: 'Ogólna wydajność',
+	modeComparison: 'Porównanie trybów',
+
+	// Training Mode
+	trainingMode: 'Tryb Treningowy',
+	practiceTargets: 'Ćwicz swoje cele',
+	currentTarget: 'Aktualny Cel',
+	hitTarget: 'Traf ten cel!',
+	hit: 'Traf!',
+	miss: 'Pudło',
+	sessionStats: 'Statystyki Sesji',
+	targets: 'Cele',
+	hits: 'Trafienia',
+	misses: 'Pudła',
+	duration: 'Czas trwania',
+	minutes: 'min',
+	newTarget: 'Nowy Cel',
+	resetSession: 'Resetuj Sesję',
+	resetSessionConfirm: 'Czy na pewno chcesz zresetować tę sesję treningową?',
+	reset: 'Resetuj',
+	saveSession: 'Zapisz Sesję',
+	sessionSaved: 'Sesja Zapisana',
+	sessionSavedMessage: 'Twoja sesja treningowa została zapisana!',
+	saveAndReset: 'Zapisz i Resetuj',
+	ok: 'OK',
+	saveError: 'Błąd zapisu',
+	saveErrorMsg: 'Nie udało się zapisać sesji treningowej',
+
+	// Training Statistics
+	trainingSessions: 'Sesje Treningowe',
+	trainingSuccess: 'Skuteczność Treningu',
+	totalTargets: 'Łącznie Celów',
+	bestSession: 'Najlepsza Sesja',
+	targetsPracticed: 'Cele Ćwiczone',
 };
 
 const englishStrings: LocalizedStrings = {
@@ -316,6 +407,52 @@ const englishStrings: LocalizedStrings = {
 	pointsLeft: 'Points left',
 	avg: 'Average',
 	darts: 'Darts',
+
+	// Enhanced Statistics
+	totalGames: 'Total Games',
+	gameVariants: 'Game Variants',
+	recentTrends: 'Recent Trends',
+	gameLength: 'Game Length',
+	shortest: 'Shortest',
+	longest: 'Longest',
+	avgLength: 'Average',
+	last5Games: 'Last 5 Games',
+	last10Games: 'Last 10 Games',
+	bestCheckout: 'Best Checkout',
+	overallPerformance: 'Overall Performance',
+	modeComparison: 'Mode Comparison',
+
+	// Training Mode
+	trainingMode: 'Training Mode',
+	practiceTargets: 'Practice your targets',
+	currentTarget: 'Current Target',
+	hitTarget: 'Hit this target!',
+	hit: 'Hit!',
+	miss: 'Miss',
+	sessionStats: 'Session Stats',
+	targets: 'Targets',
+	hits: 'Hits',
+	misses: 'Misses',
+	duration: 'Duration',
+	minutes: 'min',
+	newTarget: 'New Target',
+	resetSession: 'Reset Session',
+	resetSessionConfirm: 'Are you sure you want to reset this training session?',
+	reset: 'Reset',
+	saveSession: 'Save Session',
+	sessionSaved: 'Session Saved',
+	sessionSavedMessage: 'Your training session has been saved!',
+	saveAndReset: 'Save & Reset',
+	ok: 'OK',
+	saveError: 'Save Error',
+	saveErrorMsg: 'Failed to save training session',
+
+	// Training Statistics
+	trainingSessions: 'Training Sessions',
+	trainingSuccess: 'Training Success',
+	totalTargets: 'Total Targets',
+	bestSession: 'Best Session',
+	targetsPracticed: 'Targets Practiced',
 };
 
 export function getLocalizedStrings(language: Language): LocalizedStrings {
