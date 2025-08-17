@@ -3,7 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import React, { useCallback, useState } from 'react';
-import { Alert, Dimensions, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 
 import { deleteStatById, getComprehensiveStats } from '../database/statsRepository';
@@ -24,6 +24,14 @@ export default function StatsScreen() {
 	const [showTrainingDetails, setShowTrainingDetails] = useState(false);
 	const navigation = useNavigation<Nav>();
 	const { strings } = useLanguage();
+
+	// Custom modal state for delete confirmations
+	const [showDeleteModal, setShowDeleteModal] = useState(false);
+	const [deleteModalConfig, setDeleteModalConfig] = useState<{
+		title: string;
+		message: string;
+		onConfirm: () => void;
+	} | null>(null);
 
 	/* odczyt listy za każdym wejściem */
 	useFocusEffect(
@@ -48,54 +56,53 @@ export default function StatsScreen() {
 	);
 
 	/* akcje UI */
+	const showDeleteConfirmation = (config: { title: string; message: string; onConfirm: () => void }) => {
+		setDeleteModalConfig(config);
+		setShowDeleteModal(true);
+	};
+
 	const handleClearAll = () =>
-		Alert.alert(strings.clearAllConfirm, strings.clearAllMessage, [
-			{ text: strings.cancel, style: 'cancel' },
-			{
-				text: strings.delete,
-				style: 'destructive',
-				onPress: () => {
-					clearGames();
-					setGames([]);
-					setComprehensiveStats(null);
-				},
+		showDeleteConfirmation({
+			title: strings.clearAllConfirm,
+			message: strings.clearAllMessage,
+			onConfirm: () => {
+				clearGames();
+				setGames([]);
+				setComprehensiveStats(null);
+				setShowDeleteModal(false);
 			},
-		]);
+		});
 
 	const handleDeleteOne = (id: number) =>
-		Alert.alert(strings.deleteConfirm, undefined, [
-			{ text: strings.cancel, style: 'cancel' },
-			{
-				text: strings.delete,
-				style: 'destructive',
-				onPress: () => {
-					try {
-						deleteStatById(id);
-						setGames(prev => prev.filter(g => g.id !== id));
-						setComprehensiveStats(getComprehensiveStats());
-					} catch (e) {
-						console.warn('Delete stat error:', e);
-					}
-				},
+		showDeleteConfirmation({
+			title: strings.deleteConfirm,
+			message: strings.deleteConfirmMessage || 'Are you sure you want to delete this statistic?',
+			onConfirm: () => {
+				try {
+					deleteStatById(id);
+					setGames(prev => prev.filter(g => g.id !== id));
+					setComprehensiveStats(getComprehensiveStats());
+					setShowDeleteModal(false);
+				} catch (e) {
+					console.warn('Delete stat error:', e);
+				}
 			},
-		]);
+		});
 
 	const handleDeleteTrainingSession = (id: number) =>
-		Alert.alert(strings.deleteConfirm, undefined, [
-			{ text: strings.cancel, style: 'cancel' },
-			{
-				text: strings.delete,
-				style: 'destructive',
-				onPress: () => {
-					try {
-						db.runSync('DELETE FROM training_sessions WHERE id = ?', [id]);
-						setTrainingStats(getTrainingStats());
-					} catch (e) {
-						console.warn('Delete training session error:', e);
-					}
-				},
+		showDeleteConfirmation({
+			title: strings.deleteConfirm,
+			message: strings.deleteConfirmMessage || 'Are you sure you want to delete this training session?',
+			onConfirm: () => {
+				try {
+					db.runSync('DELETE FROM training_sessions WHERE id = ?', [id]);
+					setTrainingStats(getTrainingStats());
+					setShowDeleteModal(false);
+				} catch (e) {
+					console.warn('Delete training session error:', e);
+				}
 			},
-		]);
+		});
 
 	/* statystyki zbiorcze */
 	const played = games.length;
@@ -523,7 +530,13 @@ export default function StatsScreen() {
 												onPress={() => setShowTrainingDetails(false)} // Close when session selected
 											>
 												<View style={styles.trainingSessionHeader}>
-													<Text style={styles.trainingSessionDate}>{item.date.slice(0, 10)}</Text>
+													<Text
+														style={[
+															styles.trainingSessionDate,
+															item.trainingMode === 'checkout' && styles.checkoutModeDate,
+														]}>
+														{item.date.slice(0, 10)}
+													</Text>
 													<Text style={styles.trainingSessionTime}>
 														{new Date(item.date).toLocaleTimeString().slice(0, 5)}
 													</Text>
@@ -558,7 +571,13 @@ export default function StatsScreen() {
 												{/* Targets Practiced */}
 												{item.targetsPracticed && item.targetsPracticed.length > 0 && (
 													<View style={styles.targetsPracticedSection}>
-														<Text style={styles.targetsPracticedTitle}>{strings.targetsPracticed}:</Text>
+														<Text
+															style={[
+																styles.targetsPracticedTitle,
+																item.trainingMode === 'checkout' && styles.checkoutModeTitle,
+															]}>
+															{strings.targetsPracticed}:
+														</Text>
 														<View style={styles.targetsPracticedGrid}>
 															{item.targetsPracticed.map((target, index) => {
 																// Optimize target type detection
@@ -575,13 +594,23 @@ export default function StatsScreen() {
 																// Determine chip style based on type and result
 																const chipStyle = [
 																	styles.targetChip,
-																	targetType === 'single' && (wasMissed ? styles.singleChipMissed : styles.singleChip),
-																	targetType === 'double' && (wasMissed ? styles.doubleChipMissed : styles.doubleChip),
-																	targetType === 'triple' && (wasMissed ? styles.tripleChipMissed : styles.tripleChip),
+																	// For checkout mode: hits are orange, misses are red (same as target mode)
+																	item.trainingMode === 'checkout' &&
+																		(wasMissed ? styles.checkoutModeChipMissed : styles.checkoutModeChip),
+																	// For target mode: use existing blue/red styling
+																	item.trainingMode !== 'checkout' &&
+																		targetType === 'single' &&
+																		(wasMissed ? styles.singleChipMissed : styles.singleChip),
+																	item.trainingMode !== 'checkout' &&
+																		targetType === 'double' &&
+																		(wasMissed ? styles.doubleChipMissed : styles.doubleChip),
+																	item.trainingMode !== 'checkout' &&
+																		targetType === 'triple' &&
+																		(wasMissed ? styles.tripleChipMissed : styles.tripleChip),
 																];
 
 																return (
-																	<View key={target} style={chipStyle}>
+																	<View key={`${target}-${index}`} style={chipStyle}>
 																		<Text style={styles.targetChipText}>{target}</Text>
 																	</View>
 																);
@@ -606,6 +635,34 @@ export default function StatsScreen() {
 				contentContainerStyle={{ paddingBottom: 80 }}
 				renderItem={renderItem}
 			/>
+
+			{/* Custom Delete Modal */}
+			<Modal
+				visible={showDeleteModal}
+				transparent={true}
+				animationType='fade'
+				onRequestClose={() => setShowDeleteModal(false)}>
+				<View style={styles.deleteModalOverlay}>
+					<View style={styles.deleteModalContent}>
+						<Text style={styles.deleteModalTitle}>{deleteModalConfig?.title}</Text>
+						<Text style={styles.deleteModalMessage}>{deleteModalConfig?.message}</Text>
+						<View style={styles.deleteModalButtons}>
+							<Pressable
+								style={[styles.deleteModalButton, styles.deleteModalButtonCancel]}
+								onPress={() => setShowDeleteModal(false)}>
+								<Text style={styles.deleteModalButtonTextCancel}>{strings.cancel}</Text>
+							</Pressable>
+							<Pressable
+								style={[styles.deleteModalButton, styles.deleteModalButtonDestructive]}
+								onPress={() => {
+									deleteModalConfig?.onConfirm();
+								}}>
+								<Text style={styles.deleteModalButtonTextDestructive}>{strings.delete}</Text>
+							</Pressable>
+						</View>
+					</View>
+				</View>
+			</Modal>
 
 			{/* Summary Modal */}
 			<SummaryModal />
@@ -1076,5 +1133,81 @@ const styles = StyleSheet.create({
 	},
 	trainingSessionContent: {
 		flex: 1,
+	},
+
+	checkoutModeTitle: {
+		color: '#FF6B35', // Orange color for successful checkout mode
+	},
+
+	checkoutModeChip: {
+		backgroundColor: '#FF6B35', // Orange background for successful checkout mode chips
+		borderColor: '#FF6B35',
+	},
+	checkoutModeChipMissed: {
+		backgroundColor: '#FF6B6B', // Same red as target mode for consistency
+		borderColor: '#FF6B6B',
+	},
+	checkoutModeDate: {
+		color: '#FF6B35', // Orange color for successful checkout mode date
+	},
+
+	// Delete Modal styles
+	deleteModalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.7)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		padding: 20,
+	},
+	deleteModalContent: {
+		backgroundColor: '#1A1A1A',
+		borderRadius: 16,
+		padding: 24,
+		width: '100%',
+		maxWidth: 320,
+		borderWidth: 1,
+		borderColor: '#333',
+	},
+	deleteModalTitle: {
+		fontSize: 18,
+		fontWeight: 'bold',
+		color: '#fff',
+		textAlign: 'center',
+		marginBottom: 12,
+	},
+	deleteModalMessage: {
+		fontSize: 14,
+		color: '#ccc',
+		textAlign: 'center',
+		marginBottom: 20,
+		lineHeight: 20,
+	},
+	deleteModalButtons: {
+		flexDirection: 'row',
+		justifyContent: 'space-around',
+		gap: 12,
+	},
+	deleteModalButton: {
+		flex: 1,
+		paddingVertical: 12,
+		paddingHorizontal: 16,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	deleteModalButtonCancel: {
+		backgroundColor: '#666',
+	},
+	deleteModalButtonDestructive: {
+		backgroundColor: '#B00020',
+	},
+	deleteModalButtonTextCancel: {
+		color: '#fff',
+		fontSize: 14,
+		fontWeight: '600',
+	},
+	deleteModalButtonTextDestructive: {
+		color: '#fff',
+		fontSize: 14,
+		fontWeight: '600',
 	},
 });

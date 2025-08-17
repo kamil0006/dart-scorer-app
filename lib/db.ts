@@ -15,6 +15,7 @@ function initTrainingTable() {
 				misses INTEGER NOT NULL,
 				duration INTEGER NOT NULL,
 				success_rate REAL NOT NULL,
+				training_mode TEXT NOT NULL DEFAULT 'target',
 				targets_practiced TEXT NOT NULL,
 				target_results TEXT
 			);
@@ -101,6 +102,11 @@ export function initDB() {
 		if (!hasTargetResults) {
 			db.runSync("ALTER TABLE training_sessions ADD COLUMN target_results TEXT DEFAULT '[]';");
 			console.log('Added target_results column to training_sessions table');
+		}
+		const hasTrainingMode = trainingRows.some((r: any) => r.name === 'training_mode');
+		if (!hasTrainingMode) {
+			db.runSync("ALTER TABLE training_sessions ADD COLUMN training_mode TEXT DEFAULT 'target';");
+			console.log('Added training_mode column to training_sessions table');
 		}
 	} catch (error) {
 		console.error('Training table migration failed:', error);

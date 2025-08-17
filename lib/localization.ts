@@ -127,6 +127,7 @@ export interface LocalizedStrings {
 	// Training Mode
 	trainingMode: string;
 	practiceTargets: string;
+	checkoutPractice: string;
 	currentTarget: string;
 	hitTarget: string;
 	hit: string;
@@ -149,6 +150,27 @@ export interface LocalizedStrings {
 	error: string;
 	saveError: string;
 	saveErrorMsg: string;
+	// Checkout Practice
+	checkoutMode: string;
+	checkoutTarget: string;
+	checkoutInstructions: string;
+	checkoutSuccess: string;
+	checkoutFailed: string;
+	nextCheckout: string;
+	checkoutScore: string;
+	checkoutAttempts: string;
+	checkoutSuccessRate: string;
+	// Training Descriptions
+	targetPracticeDescription: string;
+	checkoutPracticeDescription: string;
+	// Checkout Actions
+	retryCheckout: string;
+	// Checkout Stats
+	checkoutComplete: string;
+	checkoutStats: string;
+	// UI Info
+	areVisibleIn: string;
+	tab: string;
 }
 
 const polishStrings: LocalizedStrings = {
@@ -273,6 +295,7 @@ const polishStrings: LocalizedStrings = {
 	// Training Mode
 	trainingMode: 'Tryb Treningowy',
 	practiceTargets: 'Ćwicz swoje cele',
+	checkoutPractice: 'Ćwicz Finisze',
 	currentTarget: 'Aktualny Cel',
 	hitTarget: 'Traf ten cel!',
 	hit: 'Traf!',
@@ -285,7 +308,7 @@ const polishStrings: LocalizedStrings = {
 	minutes: 'min',
 	newTarget: 'Nowy Cel',
 	resetSession: 'Resetuj Sesję',
-	resetSessionConfirm: 'Czy na pewno chcesz zresetować tę sesję treningową?',
+	resetSessionConfirm: 'Zresetować sesję treningową?',
 	reset: 'Resetuj',
 	saveSession: 'Zapisz Sesję',
 	sessionSaved: 'Sesja Zapisana',
@@ -294,6 +317,26 @@ const polishStrings: LocalizedStrings = {
 	ok: 'OK',
 	saveError: 'Błąd zapisu',
 	saveErrorMsg: 'Nie udało się zapisać sesji treningowej',
+	// Checkout Practice
+	checkoutMode: 'Tryb Finiszu',
+	checkoutTarget: 'Cel Finiszu',
+	checkoutInstructions: 'Traf wszystkie cele aby ukończyć finisz!',
+	checkoutSuccess: 'Finisz Ukończony!',
+	checkoutFailed: 'Finisz Nieudany',
+	nextCheckout: 'Następny Finisz',
+	checkoutScore: 'Wynik Finiszu',
+	checkoutAttempts: 'Próby Finiszu',
+	checkoutComplete: 'Ukończone',
+	checkoutStats: 'Statystyki Finiszu',
+	checkoutSuccessRate: 'Skuteczność Finiszu',
+	// Training Descriptions
+	targetPracticeDescription: 'Trafiaj losowe cele aby poprawić celność',
+	checkoutPracticeDescription: 'Ćwicz kończenie gier realistycznymi scenariuszami finiszu',
+	// Checkout Actions
+	retryCheckout: 'Ponów Finisz',
+	// UI Info
+	areVisibleIn: 'są widoczne w',
+	tab: 'zakładce',
 
 	// Training Statistics
 	trainingSessions: 'Sesje Treningowe',
@@ -425,6 +468,7 @@ const englishStrings: LocalizedStrings = {
 	// Training Mode
 	trainingMode: 'Training Mode',
 	practiceTargets: 'Practice your targets',
+	checkoutPractice: 'Checkout Practice',
 	currentTarget: 'Current Target',
 	hitTarget: 'Hit this target!',
 	hit: 'Hit!',
@@ -437,7 +481,7 @@ const englishStrings: LocalizedStrings = {
 	minutes: 'min',
 	newTarget: 'New Target',
 	resetSession: 'Reset Session',
-	resetSessionConfirm: 'Are you sure you want to reset this training session?',
+	resetSessionConfirm: 'Reset training session?',
 	reset: 'Reset',
 	saveSession: 'Save Session',
 	sessionSaved: 'Session Saved',
@@ -446,6 +490,26 @@ const englishStrings: LocalizedStrings = {
 	ok: 'OK',
 	saveError: 'Save Error',
 	saveErrorMsg: 'Failed to save training session',
+	// Checkout Practice
+	checkoutMode: 'Checkout Mode',
+	checkoutTarget: 'Checkout Target',
+	checkoutInstructions: 'Hit all targets to complete the checkout!',
+	checkoutSuccess: 'Checkout Complete!',
+	checkoutFailed: 'Checkout Failed',
+	nextCheckout: 'Next Checkout',
+	checkoutScore: 'Checkout Score',
+	checkoutAttempts: 'Checkout Attempts',
+	checkoutComplete: 'Complete',
+	checkoutStats: 'Checkout Stats',
+	checkoutSuccessRate: 'Checkout Success Rate',
+	// Training Descriptions
+	targetPracticeDescription: 'Hit random targets to improve accuracy',
+	checkoutPracticeDescription: 'Practice finishing games with realistic checkout scenarios',
+	// Checkout Actions
+	retryCheckout: 'Retry Checkout',
+	// UI Info
+	areVisibleIn: 'are visible in',
+	tab: 'tab',
 
 	// Training Statistics
 	trainingSessions: 'Training Sessions',

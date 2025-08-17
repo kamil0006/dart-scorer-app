@@ -8,6 +8,7 @@ export interface TrainingSession {
 	misses: number;
 	duration: number; // in seconds
 	successRate: number;
+	trainingMode: 'target' | 'checkout'; // explicit training mode
 	targetsPracticed: string[]; // array of target types practiced
 	targetResults?: { target: string; hit: boolean }[]; // individual target results
 }
@@ -29,14 +30,15 @@ export function saveTrainingSession(session: TrainingSession): number {
 	try {
 		const result = db.runSync(
 			`INSERT INTO training_sessions 
-			(date, targets, hits, misses, duration, success_rate, targets_practiced, target_results)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			(date, targets, hits, misses, duration, success_rate, training_mode, targets_practiced, target_results)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			session.date,
 			session.targets,
 			session.hits,
 			session.misses,
 			session.duration,
 			session.successRate,
+			session.trainingMode,
 			JSON.stringify(session.targetsPracticed),
 			JSON.stringify(session.targetResults || [])
 		);
@@ -60,6 +62,7 @@ export function getTrainingSessions(): TrainingSession[] {
 		misses: row.misses,
 		duration: row.duration,
 		successRate: row.success_rate,
+		trainingMode: row.training_mode || 'target', // Default to 'target' for backward compatibility
 		targetsPracticed: JSON.parse(row.targets_practiced),
 		targetResults: row.target_results ? JSON.parse(row.target_results) : [],
 	}));
@@ -142,6 +145,7 @@ export function getRecentTrainingSessions(limit: number = 10): TrainingSession[]
 		misses: row.misses,
 		duration: row.duration,
 		successRate: row.success_rate,
+		trainingMode: row.training_mode || 'target', // Default to 'target' for backward compatibility
 		targetsPracticed: JSON.parse(row.targets_practiced),
 		targetResults: row.target_results ? JSON.parse(row.target_results) : [],
 	}));

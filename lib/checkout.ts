@@ -1,5 +1,8 @@
+// Simple checkout system that returns targets in order
+
+// Valid checkout paths for different scores
 const chart = new Map<number, string[]>([
-	// 170–161 (3 lotki z Bullem)
+	// 170–161 (3 darts with Bull)
 	[170, ['T20', 'T20', 'Bull']],
 	[167, ['T20', 'T19', 'Bull']],
 	[164, ['T20', 'T18', 'Bull']],
@@ -45,11 +48,11 @@ const chart = new Map<number, string[]>([
 	[125, ['25', 'T20', 'D20']],
 	[124, ['T20', 'T16', 'D8']],
 	[123, ['T19', 'T16', 'D12']],
-	[122, ['T18', 'T18', 'D7']],
+	[122, ['T18', 'T18', 'D11']],
 	[121, ['T20', 'T11', 'D14']],
 	// 120–111
 	[120, ['T20', '20', 'D20']],
-	[119, ['T19', 'T12', 'D13']],
+	[119, ['T19', 'T12', 'D11']],
 	[118, ['T20', '18', 'D20']],
 	[117, ['T20', '17', 'D20']],
 	[116, ['T20', '16', 'D20']],
@@ -69,7 +72,7 @@ const chart = new Map<number, string[]>([
 	[103, ['T20', '3', 'D20']],
 	[102, ['T20', '10', 'D16']],
 	[101, ['T17', '18', 'D16']],
-	// 100 – 91 (2 lotki + double)
+	// 100 – 91 (2 darts + double)
 	[100, ['T20', 'D20']],
 	[99, ['T19', '10', 'D16']],
 	[98, ['T20', 'D19']],
@@ -80,7 +83,6 @@ const chart = new Map<number, string[]>([
 	[93, ['T19', 'D18']],
 	[92, ['T20', 'D16']],
 	[91, ['T17', 'D20']],
-
 	// 90–81
 	[90, ['T18', 'D18']],
 	[89, ['T19', 'D16']],
@@ -113,9 +115,9 @@ const chart = new Map<number, string[]>([
 	[64, ['T16', 'D8']],
 	[63, ['T13', 'D12']],
 	[62, ['T10', 'D16']],
-	[61, ['25', 'D18']], // alternatywa: T15 D8
+	[61, ['25', 'D18']],
 	// 60–51
-	[60, ['20', 'D20']], // single 20 → D20
+	[60, ['20', 'D20']],
 	[59, ['19', 'D20']],
 	[58, ['18', 'D20']],
 	[57, ['17', 'D20']],
@@ -125,18 +127,47 @@ const chart = new Map<number, string[]>([
 	[53, ['13', 'D20']],
 	[52, ['12', 'D20']],
 	[51, ['11', 'D20']],
-	// 50 specjalny (Bull) obsługuje fallback
+	// 50 and below
+	[50, ['Bull']],
 ]);
 
-/** Fallback D16 → “D16”, Bull → “Bull”  */
+// Fallback for simple doubles
 function simpleDouble(score: number): string[] | undefined {
 	if (score === 50) return ['Bull'];
-	if (score % 2 === 0 && score <= 40 && score >= 2) return ['D' + score / 2];
+	if (score % 2 === 0 && score <= 40 && score >= 2) {
+		const doubleValue = score / 2;
+		if (doubleValue >= 1 && doubleValue <= 20) {
+			return ['D' + doubleValue];
+		}
+	}
 	return undefined;
 }
 
-/** Zwraca listę lotek lub undefined, jeśli brak checkoutu */
+// Get checkout path for a given score
 export function getCheckout(score: number): string[] | undefined {
 	if (score > 170 || score < 2) return undefined;
 	return chart.get(score) ?? simpleDouble(score);
+}
+
+// Calculate remaining score after hitting a target
+export function calculateRemainingScore(currentScore: number, target: string): number {
+	if (target === 'Bull') return currentScore - 50;
+	if (target === '25') return currentScore - 25;
+
+	const type = target[0];
+	const value = parseInt(target.slice(1));
+
+	switch (type) {
+		case 'T':
+			return currentScore - value * 3;
+		case 'D':
+			return currentScore - value * 2;
+		default:
+			return currentScore - value;
+	}
+}
+
+// Get checkout for remaining score (for partial completions)
+export function getCheckoutForRemaining(remainingScore: number): string[] | undefined {
+	return getCheckout(remainingScore);
 }
