@@ -123,6 +123,7 @@ export interface LocalizedStrings {
 	pointsLeft: string;
 	avg: string;
 	darts: string;
+	points: string;
 
 	// Training Mode
 	trainingMode: string;
@@ -150,6 +151,7 @@ export interface LocalizedStrings {
 	error: string;
 	saveError: string;
 	saveErrorMsg: string;
+	targetsToHit: string;
 	// Checkout Practice
 	checkoutMode: string;
 	checkoutTarget: string;
@@ -277,6 +279,7 @@ const polishStrings: LocalizedStrings = {
 	pointsLeft: 'Punkty pozostałe',
 	avg: 'Średnia',
 	darts: 'Lotki',
+	points: 'pkt',
 
 	// Enhanced Statistics
 	totalGames: 'Łącznie gier',
@@ -317,6 +320,7 @@ const polishStrings: LocalizedStrings = {
 	ok: 'OK',
 	saveError: 'Błąd zapisu',
 	saveErrorMsg: 'Nie udało się zapisać sesji treningowej',
+	targetsToHit: 'Cele do trafienia',
 	// Checkout Practice
 	checkoutMode: 'Tryb Finiszu',
 	checkoutTarget: 'Cel Finiszu',
@@ -450,6 +454,7 @@ const englishStrings: LocalizedStrings = {
 	pointsLeft: 'Points left',
 	avg: 'Average',
 	darts: 'Darts',
+	points: 'pts',
 
 	// Enhanced Statistics
 	totalGames: 'Total Games',
@@ -490,6 +495,7 @@ const englishStrings: LocalizedStrings = {
 	ok: 'OK',
 	saveError: 'Save Error',
 	saveErrorMsg: 'Failed to save training session',
+	targetsToHit: 'Targets to hit',
 	// Checkout Practice
 	checkoutMode: 'Checkout Mode',
 	checkoutTarget: 'Checkout Target',

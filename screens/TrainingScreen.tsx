@@ -399,16 +399,16 @@ export default function TrainingScreen() {
 			const sessionId = await saveTrainingSession(session);
 
 			showCustomModal({
-				title: strings.sessionSaved || 'Session Saved',
-				message: strings.sessionSavedMessage || 'Your training session has been saved!',
-				buttons: [{ text: strings.ok || 'OK', onPress: () => setShowModal(false), style: 'default' }],
+				title: strings.sessionSaved,
+				message: strings.sessionSavedMessage,
+				buttons: [{ text: strings.ok, onPress: () => setShowModal(false), style: 'default' }],
 			});
 		} catch (error) {
 			console.error('Failed to save training session:', error);
 			showCustomModal({
-				title: strings.saveError || 'Save Error',
-				message: strings.saveErrorMsg || 'Failed to save training session',
-				buttons: [{ text: strings.ok || 'OK', onPress: () => setShowModal(false), style: 'destructive' }],
+				title: strings.saveError,
+				message: strings.saveErrorMsg,
+				buttons: [{ text: strings.ok, onPress: () => setShowModal(false), style: 'destructive' }],
 			});
 		}
 	};
@@ -416,12 +416,12 @@ export default function TrainingScreen() {
 	// Reset session
 	const resetSession = () => {
 		showCustomModal({
-			title: strings.resetSession || 'Reset Session',
-			message: strings.resetSessionConfirm || 'Are you sure you want to reset this training session?',
+			title: strings.resetSession,
+			message: strings.resetSessionConfirm,
 			buttons: [
-				{ text: strings.cancel || 'Cancel', onPress: () => setShowModal(false), style: 'cancel' },
+				{ text: strings.cancel, onPress: () => setShowModal(false), style: 'cancel' },
 				{
-					text: strings.saveAndReset || 'Save & Reset',
+					text: strings.saveAndReset,
 					style: 'default',
 					onPress: async () => {
 						setShowModal(false);
@@ -430,7 +430,7 @@ export default function TrainingScreen() {
 					},
 				},
 				{
-					text: strings.reset || 'Reset',
+					text: strings.reset,
 					style: 'destructive',
 					onPress: () => {
 						setShowModal(false);
@@ -489,20 +489,20 @@ export default function TrainingScreen() {
 			{/* Mode Selector */}
 			{!sessionStarted && (
 				<View style={styles.modeSelector}>
-					<Text style={styles.modeSelectorTitle}>{strings.trainingMode || 'Training Mode'}</Text>
+					<Text style={styles.modeSelectorTitle}>{strings.trainingMode}</Text>
 					<View style={styles.modeButtons}>
 						<Pressable
 							style={[styles.modeButton, trainingMode === 'target' && styles.modeButtonActive]}
 							onPress={() => setTrainingMode('target')}>
 							<Text style={[styles.modeButtonText, trainingMode === 'target' && styles.modeButtonTextActive]}>
-								{strings.practiceTargets || 'Practice Targets'}
+								{strings.practiceTargets}
 							</Text>
 						</Pressable>
 						<Pressable
 							style={[styles.modeButton, trainingMode === 'checkout' && styles.modeButtonActive]}
 							onPress={() => setTrainingMode('checkout')}>
 							<Text style={[styles.modeButtonText, trainingMode === 'checkout' && styles.modeButtonTextActive]}>
-								{strings.checkoutPractice || 'Checkout Practice'}
+								{strings.checkoutPractice}
 							</Text>
 						</Pressable>
 					</View>
@@ -513,23 +513,19 @@ export default function TrainingScreen() {
 			{!sessionStarted ? (
 				<View style={styles.startSection}>
 					<Text style={styles.startTitle}>
-						{trainingMode === 'target'
-							? strings.practiceTargets || 'Practice your targets'
-							: strings.checkoutPractice || 'Checkout Practice'}
+						{trainingMode === 'target' ? strings.practiceTargets : strings.checkoutPractice}
 					</Text>
 					<Text style={styles.startSubtitle}>
-						{trainingMode === 'target'
-							? strings.targetPracticeDescription || 'Practice your targets'
-							: strings.checkoutPracticeDescription || 'Checkout Practice'}
+						{trainingMode === 'target' ? strings.targetPracticeDescription : strings.checkoutPracticeDescription}
 					</Text>
 					<Pressable style={styles.startButton} onPress={startSession}>
 						<MaterialIcons name='play-arrow' size={32} color='#fff' />
-						<Text style={styles.startButtonText}>{strings.startGame || 'Start Training'}</Text>
+						<Text style={styles.startButtonText}>{strings.startGame}</Text>
 					</Pressable>
 				</View>
 			) : currentTarget ? (
 				<View style={styles.targetSection}>
-					<Text style={styles.targetLabel}>{strings.currentTarget || 'Current Target'}</Text>
+					<Text style={styles.targetLabel}>{strings.currentTarget}</Text>
 					<View style={styles.targetDisplay}>
 						<Text
 							style={[
@@ -540,21 +536,23 @@ export default function TrainingScreen() {
 							]}>
 							{currentTarget.display}
 						</Text>
-						<Text style={styles.targetPoints}>{currentTarget.points} pts</Text>
+						<Text style={styles.targetPoints}>
+							{currentTarget.points} {strings.points}
+						</Text>
 					</View>
-					<Text style={styles.targetInstruction}>{strings.hitTarget || 'Hit this target!'}</Text>
+					<Text style={styles.targetInstruction}>{strings.hitTarget}</Text>
 				</View>
 			) : currentCheckout ? (
 				<ScrollView
 					style={styles.checkoutSection}
 					contentContainerStyle={styles.checkoutSectionContent}
 					showsVerticalScrollIndicator={false}>
-					<Text style={styles.checkoutLabel}>{strings.checkoutTarget || 'Checkout Target'}</Text>
+					<Text style={styles.checkoutLabel}>{strings.checkoutTarget}</Text>
 					<Text style={styles.checkoutScore}>{currentCheckout}</Text>
 					<Text style={styles.checkoutRemainingScore}>
 						{remainingScore !== null
-							? `Remaining: ${remainingScore} - Hit: ${checkoutTargets.join(' → ')}`
-							: `Targets to hit: ${checkoutTargets.join(' → ')}`}
+							? `${strings.remaining}: ${remainingScore} - ${strings.hit}: ${checkoutTargets.join(' → ')}`
+							: `${strings.targetsToHit}: ${checkoutTargets.join(' → ')}`}
 					</Text>
 
 					{/* Checkout targets display */}
@@ -582,14 +580,14 @@ export default function TrainingScreen() {
 					{/* Progress indicator */}
 					<View style={styles.checkoutProgress}>
 						<Text style={styles.checkoutProgressText}>
-							{checkoutProgress.filter(p => p.hit).length} / {checkoutTargets.length} {strings.hit || 'Hit'}
+							{checkoutProgress.filter(p => p.hit).length} / {checkoutTargets.length} {strings.targets}
 						</Text>
 					</View>
 
 					{checkoutCompleted && (
 						<View style={styles.checkoutSuccess}>
 							<MaterialIcons name='celebration' size={32} color='#4CAF50' />
-							<Text style={styles.checkoutSuccessText}>{strings.checkoutSuccess || 'Checkout Complete!'}</Text>
+							<Text style={styles.checkoutSuccessText}>{strings.checkoutSuccess}</Text>
 						</View>
 					)}
 				</ScrollView>
@@ -600,12 +598,12 @@ export default function TrainingScreen() {
 				<View style={styles.actionButtons}>
 					<Pressable style={[styles.actionButton, styles.hitButton]} onPress={() => handleResult(true)}>
 						<MaterialIcons name='check-circle' size={24} color='#fff' />
-						<Text style={styles.buttonText}>{strings.hit || 'Hit!'}</Text>
+						<Text style={styles.buttonText}>{strings.hit}</Text>
 					</Pressable>
 
 					<Pressable style={[styles.actionButton, styles.missButton]} onPress={() => handleResult(false)}>
 						<MaterialIcons name='cancel' size={24} color='#fff' />
-						<Text style={styles.buttonText}>{strings.miss || 'Miss'}</Text>
+						<Text style={styles.buttonText}>{strings.miss}</Text>
 					</Pressable>
 				</View>
 			)}
@@ -627,13 +625,13 @@ export default function TrainingScreen() {
 										style={[styles.checkoutActionButton, styles.checkoutHitButton]}
 										onPress={() => handleCheckoutResult(target, true)}>
 										<MaterialIcons name='check-circle' size={20} color='#fff' />
-										<Text style={styles.checkoutActionButtonText}>{strings.hit || 'Hit!'}</Text>
+										<Text style={styles.checkoutActionButtonText}>{strings.hit}</Text>
 									</Pressable>
 									<Pressable
 										style={[styles.checkoutActionButton, styles.checkoutMissButton]}
 										onPress={() => handleCheckoutResult(target, false)}>
 										<MaterialIcons name='cancel' size={20} color='#fff' />
-										<Text style={styles.checkoutActionButtonText}>{strings.miss || 'Miss'}</Text>
+										<Text style={styles.checkoutActionButtonText}>{strings.miss}</Text>
 									</Pressable>
 								</View>
 							</View>
@@ -645,12 +643,12 @@ export default function TrainingScreen() {
 							{remainingScore !== null && (
 								<Pressable style={[styles.checkoutActionButton, styles.retryCheckoutButton]} onPress={retryCheckout}>
 									<MaterialIcons name='refresh' size={20} color='#fff' />
-									<Text style={styles.checkoutActionButtonText}>{strings.retryCheckout || 'Retry Checkout'}</Text>
+									<Text style={styles.checkoutActionButtonText}>{strings.retryCheckout}</Text>
 								</Pressable>
 							)}
 							<Pressable style={[styles.checkoutActionButton, styles.nextCheckoutButton]} onPress={generateCheckout}>
 								<MaterialIcons name='arrow-forward' size={20} color='#fff' />
-								<Text style={styles.checkoutActionButtonText}>{strings.nextCheckout || 'Next Checkout'}</Text>
+								<Text style={styles.checkoutActionButtonText}>{strings.nextCheckout}</Text>
 							</Pressable>
 						</View>
 					)}
@@ -661,38 +659,36 @@ export default function TrainingScreen() {
 			{sessionStarted && (
 				<View style={styles.statsSection}>
 					<Text style={[styles.statsTitle, trainingMode === 'checkout' && styles.checkoutStatsTitle]}>
-						{trainingMode === 'checkout'
-							? strings.checkoutStats || 'Checkout Stats'
-							: strings.sessionStats || 'Session Stats'}
+						{trainingMode === 'checkout' ? strings.checkoutStats : strings.sessionStats}
 					</Text>
 					{trainingMode === 'target' ? (
 						<View style={styles.statsGrid}>
 							<View style={styles.statItem}>
 								<Text style={styles.statValue}>{sessionStats.targets}</Text>
-								<Text style={styles.statLabel}>{strings.targets || 'Targets'}</Text>
+								<Text style={styles.statLabel}>{strings.targets}</Text>
 							</View>
 							<View style={styles.statItem}>
 								<Text style={styles.statValue}>{sessionStats.hits}</Text>
-								<Text style={styles.statLabel}>{strings.hits || 'Hits'}</Text>
+								<Text style={styles.statLabel}>{strings.hits}</Text>
 							</View>
 							<View style={styles.statItem}>
 								<Text style={styles.statValue}>{sessionStats.misses}</Text>
-								<Text style={styles.statLabel}>{strings.misses || 'Misses'}</Text>
+								<Text style={styles.statLabel}>{strings.misses}</Text>
 							</View>
 							<View style={styles.statItem}>
 								<Text style={styles.statValue}>{successRate}%</Text>
-								<Text style={styles.statLabel}>{strings.successRate || 'Success'}</Text>
+								<Text style={styles.statLabel}>{strings.successRate}</Text>
 							</View>
 						</View>
 					) : (
 						<View style={styles.checkoutStatsGrid}>
 							<View style={styles.checkoutStatItem}>
 								<Text style={styles.checkoutStatValue}>{checkoutStats.totalCheckouts}</Text>
-								<Text style={styles.checkoutStatLabel}>{strings.checkoutAttempts || 'Checkouts'}</Text>
+								<Text style={styles.checkoutStatLabel}>{strings.checkoutAttempts}</Text>
 							</View>
 							<View style={styles.checkoutStatItem}>
 								<Text style={styles.checkoutStatValue}>{checkoutStats.completedCheckouts}</Text>
-								<Text style={styles.checkoutStatLabel}>{strings.checkoutComplete || 'Completed'}</Text>
+								<Text style={styles.checkoutStatLabel}>{strings.checkoutComplete}</Text>
 							</View>
 							<View style={styles.checkoutStatItem}>
 								<Text style={styles.checkoutStatValue}>
@@ -701,13 +697,12 @@ export default function TrainingScreen() {
 										: 0}
 									%
 								</Text>
-								<Text style={styles.checkoutStatLabel}>{strings.successRate || 'Success'}</Text>
+								<Text style={styles.checkoutStatLabel}>{strings.successRate}</Text>
 							</View>
 						</View>
 					)}
 					<Text style={styles.durationText}>
-						{strings.duration || 'Duration'}: {Math.floor(sessionDuration / 60)}:
-						{String(sessionDuration % 60).padStart(2, '0')}
+						{strings.duration}: {Math.floor(sessionDuration / 60)}:{String(sessionDuration % 60).padStart(2, '0')}
 					</Text>
 				</View>
 			)}
@@ -718,12 +713,12 @@ export default function TrainingScreen() {
 					{trainingMode === 'target' ? (
 						<Pressable style={styles.controlButton} onPress={generateTarget}>
 							<MaterialIcons name='refresh' size={20} color='#8AB4F8' />
-							<Text style={styles.controlButtonText}>{strings.newTarget || 'New Target'}</Text>
+							<Text style={styles.controlButtonText}>{strings.newTarget}</Text>
 						</Pressable>
 					) : (
 						<Pressable style={styles.controlButton} onPress={generateCheckout}>
 							<MaterialIcons name='refresh' size={20} color='#8AB4F8' />
-							<Text style={styles.controlButtonText}>{strings.nextCheckout || 'Next Checkout'}</Text>
+							<Text style={styles.controlButtonText}>{strings.nextCheckout}</Text>
 						</Pressable>
 					)}
 
@@ -735,12 +730,12 @@ export default function TrainingScreen() {
 							(trainingMode === 'checkout' && checkoutStats.totalCheckouts === 0)
 						}>
 						<MaterialIcons name='save' size={20} color='#4CAF50' />
-						<Text style={styles.controlButtonText}>{strings.saveSession || 'Save Session'}</Text>
+						<Text style={styles.controlButtonText}>{strings.saveSession}</Text>
 					</Pressable>
 
 					<Pressable style={styles.controlButton} onPress={resetSession}>
 						<MaterialIcons name='restart-alt' size={20} color='#B00020' />
-						<Text style={styles.controlButtonText}>{strings.resetSession || 'Reset Session'}</Text>
+						<Text style={styles.controlButtonText}>{strings.resetSession}</Text>
 					</Pressable>
 				</View>
 			)}
