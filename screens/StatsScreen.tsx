@@ -113,7 +113,8 @@ export default function StatsScreen() {
 	const allAvg = played ? ((games.reduce((s, g) => s + g.scored, 0) / allDarts) * 3).toFixed(1) : '0.0';
 	const highestCheckout = Math.max(
 		...games.map(g => {
-			if (g.checkout && g.checkout !== 'null') {
+			// Only count completed games (not forfeited)
+			if (g.checkout && g.checkout !== 'null' && !(g.forfeited === 1 || g.forfeited === true)) {
 				// Extract the highest value from checkout string (e.g., "T20 T20 Bull" -> 170)
 				const checkoutValues = g.checkout.split(' ').map((shot: string) => {
 					if (shot.startsWith('T')) return parseInt(shot.slice(1)) * 3;

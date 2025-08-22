@@ -100,8 +100,8 @@ export function getComprehensiveStats() {
 			completed++;
 		}
 
-		// Checkout tracking
-		if (game.checkout && game.checkout !== 'null') {
+		// Checkout tracking - only count completed games
+		if (game.checkout && game.checkout !== 'null' && !(game.forfeited === 1 || game.forfeited === true)) {
 			const checkoutValue = calculateCheckoutValue(game.checkout);
 			if (checkoutValue > highestFinish) highestFinish = checkoutValue;
 			if (checkoutValue > bestCheckout) bestCheckout = checkoutValue;

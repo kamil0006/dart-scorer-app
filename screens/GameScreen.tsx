@@ -141,7 +141,7 @@ export default function GameScreen({ route }: any): React.ReactElement {
 			start: initialScore,
 			turns,
 			hits: gameHits,
-			checkout: getCheckout(currentScore)?.join(' '),
+			checkout: undefined, // Don't set checkout for forfeited games
 			forfeited: true,
 			forfeitScore: currentScore,
 		});
