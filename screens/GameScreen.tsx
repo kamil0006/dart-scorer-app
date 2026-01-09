@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { Dimensions, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Modal, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import AdvancedThrowPad from '../components/AdvancedThrowPad';
 import DartboardBase from '../components/DartboardBase';
@@ -9,7 +9,7 @@ import DartboardPicker from '../components/DartboardPicker';
 
 import Numpad from '../components/Numpad';
 import ScoreBoard from '../components/ScoreBoard';
-import { getCheckout } from '../lib/checkout';
+import { getCheckout, validateCheckout } from '../lib/checkout';
 import { Dart, saveGame } from '../lib/db';
 import { useLanguage } from '../lib/LanguageContext';
 import { getAdvanced } from '../lib/settings';
@@ -32,6 +32,17 @@ export default function GameScreen({ route }: any): React.ReactElement {
 	const [gameOver, setGameOver] = useState(false);
 
 	const [turnHitCounts, setTurnHitCounts] = useState<number[]>([]);
+	
+	// Modal do wyboru liczby lotek w ostatniej turze przy checkoutie (tryb simple i advanced)
+	const [showCheckoutDartsModal, setShowCheckoutDartsModal] = useState(false);
+	const [pendingCheckoutData, setPendingCheckoutData] = useState<{
+		start: number;
+		turns: number[];
+		hits: Dart[];
+		checkout: string;
+		isAdvanced: boolean;
+		lastTurnHits?: Dart[]; // Tylko dla advanced - lotki z ostatniej tury
+	} | null>(null);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -53,25 +64,87 @@ export default function GameScreen({ route }: any): React.ReactElement {
 		if (next < 0 || next === 1) return; // bust
 
 		if (next === 0) {
-			// zapis do bazy
-			saveGame({
-				start: initialScore,
-				turns: [...turns, pts],
-				hits: gameHits,
-				checkout: getCheckout(currentScore)?.join(' '),
-			});
-
+			// Checkout - gra zakończona
+			const checkoutStr = getCheckout(currentScore)?.join(' ') || '';
+			
 			if (advanced) {
-				// w advanced – koniec, ale trzymaj planszę
-				setGameOver(true);
+				// W trybie advanced: waliduj checkout i pokaż modal jeśli potrzeba
+				const checkoutPath = getCheckout(currentScore);
+				if (checkoutPath) {
+					// Sprawdź czy faktyczne rzuty pasują do checkoutu
+					const isValidCheckout = validateCheckout(gameHits, checkoutPath);
+					
+					if (!isValidCheckout) {
+						// Checkout nie jest poprawny - nie kończ gry, traktuj jak bust
+						// Wyczyść tylko bieżące lotki tej tury
+						setHits([]);
+						return;
+					}
+					
+					// Checkout jest poprawny - pokaż modal do wyboru liczby lotek (podobnie jak w simple)
+					setPendingCheckoutData({
+						start: initialScore,
+						turns: [...turns, pts],
+						hits: gameHits,
+						checkout: checkoutStr,
+						isAdvanced: true,
+					});
+					setShowCheckoutDartsModal(true);
+				} else {
+					// Brak checkoutu - zapisz od razu (nie powinno się zdarzyć przy next === 0)
+					saveGame({
+						start: initialScore,
+						turns: [...turns, pts],
+						hits: gameHits,
+						checkout: checkoutStr,
+					});
+					setGameOver(true);
+				}
 			} else {
-				// w normalnym trybie czyść od razu
-				setTurns([]);
-				setHits([]);
-				setGameHits([]);
+				// W trybie simple: pokaż modal do wyboru liczby lotek w ostatniej turze
+				setPendingCheckoutData({
+					start: initialScore,
+					turns: [...turns, pts],
+					hits: gameHits,
+					checkout: checkoutStr,
+					isAdvanced: false,
+				});
+				setShowCheckoutDartsModal(true);
 			}
 		} else {
 			setTurns(prev => [...prev, pts]);
+		}
+	};
+	
+	// Funkcja do obliczenia minimalnej liczby lotek potrzebnej do checkoutu
+	const getMinCheckoutDarts = (checkout: string): number => {
+		if (!checkout) return 1;
+		// Parsuj checkout string - liczba elementów to minimalna liczba lotek
+		const checkoutParts = checkout.trim().split(/\s+/);
+		return checkoutParts.length;
+	};
+	
+	// Funkcja do zapisania gry z wybraną liczbą lotek w ostatniej turze
+	const handleSaveWithCheckoutDarts = (checkoutDarts: number) => {
+		if (!pendingCheckoutData) return;
+		
+		saveGame({
+			start: pendingCheckoutData.start,
+			turns: pendingCheckoutData.turns,
+			hits: pendingCheckoutData.hits,
+			checkout: pendingCheckoutData.checkout,
+			checkoutDarts: pendingCheckoutData.isAdvanced ? undefined : checkoutDarts, // W advanced nie używamy checkoutDarts
+		});
+		
+		// Wyczyść stan
+		setShowCheckoutDartsModal(false);
+		setPendingCheckoutData(null);
+		setTurns([]);
+		setHits([]);
+		setGameHits([]);
+		
+		if (pendingCheckoutData.isAdvanced) {
+			setGameOver(true); // W advanced pokaż przycisk 'Nowa Gra'
 		}
 	};
 
@@ -83,19 +156,40 @@ export default function GameScreen({ route }: any): React.ReactElement {
 
 		// 2) Natychmiastowe zakończenie, jeśli w advanced padnie dokładnie currentScore
 		if (advanced && ptsSoFar === currentScore) {
-			// zapisz liczbę lotek do turnHitCounts
+			// Waliduj checkout - sprawdź czy faktyczne rzuty z tej tury pasują do checkoutu
+			const checkoutPath = getCheckout(currentScore);
+			if (!checkoutPath) {
+				// Nie ma checkoutu dla tego wyniku - to nie powinno się zdarzyć, ale zabezpieczenie
+				return;
+			}
+			
+			// Sprawdź tylko lotki z tej tury (nextHits), nie wszystkie lotki z gry
+			const isValidCheckout = validateCheckout(nextHits, checkoutPath);
+			
+			if (!isValidCheckout) {
+				// Checkout nie jest poprawny - nie kończ gry, traktuj jak bust
+				// Wyczyść tylko bieżące lotki tej tury
+				setHits([]);
+				return;
+			}
+			
+			// Checkout jest poprawny - pokaż modal do potwierdzenia (podobnie jak w simple)
 			setTurnHitCounts(tc => [...tc, nextHits.length]);
-
-			saveGame({
+			
+			// Zapisz wszystkie lotki z gry (dla bazy danych) oraz lotki z ostatniej tury (dla modala)
+			const allHitsForSave = [...gameHits, d];
+			
+			setPendingCheckoutData({
 				start: initialScore,
 				turns: [...turns, ptsSoFar],
-				hits: [...gameHits, d],
-				checkout: getCheckout(currentScore)?.join(' '),
+				hits: allHitsForSave, // Wszystkie lotki z gry dla zapisu do bazy
+				checkout: checkoutPath.join(' '),
+				isAdvanced: true,
+				lastTurnHits: nextHits, // Tylko lotki z ostatniej tury dla modala (używane do wyświetlenia liczby)
 			});
-			// wyczyść tylko bieżące lotki i tury, NIE czyść gameHits
-			setTurns([]);
+			setShowCheckoutDartsModal(true);
+			// Wyczyść tylko bieżące lotki tej tury
 			setHits([]);
-			setGameOver(true); // pokaż przycisk 'Nowa Gra', nie resetuj SVG
 			return;
 		}
 
@@ -283,6 +377,62 @@ export default function GameScreen({ route }: any): React.ReactElement {
 					</>
 				)}
 			</ScrollView>
+			
+			{/* Modal do wyboru liczby lotek w ostatniej turze przy checkoutie (tryb simple) */}
+			<Modal
+				visible={showCheckoutDartsModal}
+				transparent={true}
+				animationType='fade'
+				onRequestClose={() => setShowCheckoutDartsModal(false)}>
+				<View style={styles.modalOverlay}>
+					<View style={styles.modalContent}>
+						<Text style={styles.modalTitle}>{strings.checkoutDartsQuestion}</Text>
+						<Text style={styles.modalMessage}>
+							{strings.checkout}: {pendingCheckoutData?.checkout || ''}
+						</Text>
+						<View style={styles.dartsButtons}>
+							{(() => {
+								// W trybie advanced pokazuj tylko faktyczną liczbę lotek użytych w ostatniej turze
+								if (pendingCheckoutData?.isAdvanced) {
+									// Użyj lastTurnHits jeśli dostępne, w przeciwnym razie użyj hits (fallback)
+									const lastTurnHits = pendingCheckoutData.lastTurnHits || [];
+									const actualDarts = lastTurnHits.length > 0 ? lastTurnHits.length : pendingCheckoutData.hits.length;
+									return (
+										<Pressable
+											style={styles.dartsButton}
+											onPress={() => handleSaveWithCheckoutDarts(actualDarts)}>
+											<Text style={styles.dartsButtonText}>{actualDarts}</Text>
+										</Pressable>
+									);
+								}
+								
+								// W trybie simple pokazuj opcje filtrowane przez minimalną liczbę lotek
+								return [1, 2, 3]
+									.filter(darts => {
+										// Filtruj tylko możliwe opcje - nie mniej niż minimalna liczba lotek z checkoutu
+										const minDarts = pendingCheckoutData?.checkout 
+											? getMinCheckoutDarts(pendingCheckoutData.checkout) 
+											: 1;
+										return darts >= minDarts;
+									})
+									.map(darts => (
+										<Pressable
+											key={darts}
+											style={styles.dartsButton}
+											onPress={() => handleSaveWithCheckoutDarts(darts)}>
+											<Text style={styles.dartsButtonText}>{darts}</Text>
+										</Pressable>
+									));
+							})()}
+						</View>
+						<Pressable
+							style={styles.modalCancelButton}
+							onPress={() => setShowCheckoutDartsModal(false)}>
+							<Text style={styles.modalCancelButtonText}>{strings.cancel}</Text>
+						</Pressable>
+					</View>
+				</View>
+			</Modal>
 		</SafeAreaView>
 	);
 }
@@ -369,5 +519,59 @@ const styles = StyleSheet.create({
 		color: '#fff',
 		fontSize: 15,
 		fontWeight: '600',
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.7)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: {
+		backgroundColor: '#1E1E1E',
+		borderRadius: 16,
+		padding: 24,
+		width: '80%',
+		maxWidth: 400,
+	},
+	modalTitle: {
+		color: '#fff',
+		fontSize: 20,
+		fontWeight: '600',
+		marginBottom: 12,
+		textAlign: 'center',
+	},
+	modalMessage: {
+		color: '#aaa',
+		fontSize: 14,
+		marginBottom: 20,
+		textAlign: 'center',
+	},
+	dartsButtons: {
+		flexDirection: 'row',
+		justifyContent: 'space-around',
+		marginBottom: 16,
+		gap: 12,
+	},
+	dartsButton: {
+		flex: 1,
+		backgroundColor: '#8AB4F8',
+		paddingVertical: 16,
+		paddingHorizontal: 20,
+		borderRadius: 8,
+		alignItems: 'center',
+	},
+	dartsButtonText: {
+		color: '#000',
+		fontSize: 16,
+		fontWeight: '600',
+	},
+	modalCancelButton: {
+		marginTop: 8,
+		paddingVertical: 12,
+		alignItems: 'center',
+	},
+	modalCancelButtonText: {
+		color: '#aaa',
+		fontSize: 14,
 	},
 });

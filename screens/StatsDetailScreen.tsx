@@ -3,15 +3,20 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StackScreenProps } from '@react-navigation/stack';
 import React from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { formatDarts } from '../lib/dartsFormatter';
 import { useLanguage } from '../lib/LanguageContext';
 import { RootStackParamList } from '../navigation/types';
 
 type Props = StackScreenProps<RootStackParamList, 'StatsDetail'>;
 
 export default function StatsDetailScreen({ route, navigation }: Props) {
-	const { turns, avg3, date, start, forfeited = false, forfeitScore = null } = route.params;
+	const { turns, avg3, date, start, darts, forfeited = false, forfeitScore = null } = route.params;
 	const { strings } = useLanguage();
-	const darts = turns.length * 3;
+	const dartsFormatted = formatDarts(darts, {
+		dart: strings.dart,
+		dartsPlural: strings.dartsPlural,
+		dartsGenitive: strings.dartsGenitive,
+	});
 
 	const renderTurn = ({ item, index }: { item: number; index: number }) => (
 		<View style={styles.row}>
@@ -45,7 +50,7 @@ export default function StatsDetailScreen({ route, navigation }: Props) {
 			<View style={styles.summary}>
 				<Stat label={strings.avg} value={avg3.toFixed(1)} />
 				<Stat label={strings.turns} value={turns.length} />
-				<Stat label={strings.darts} value={darts} />
+				<Stat label={strings.darts} value={dartsFormatted} />
 			</View>
 
 			<FlatList

@@ -8,6 +8,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 
 import { deleteStatById, getComprehensiveStats } from '../database/statsRepository';
 import { getTrainingSessions, getTrainingStats } from '../database/trainingRepository';
+import { formatDarts } from '../lib/dartsFormatter';
 import { clearGames, db, fetchGames } from '../lib/db';
 import { useLanguage } from '../lib/LanguageContext';
 import { RootStackParamList } from '../navigation/types';
@@ -215,6 +216,7 @@ export default function StatsScreen() {
 						avg3: item.avg3,
 						date: item.date,
 						start: item.start,
+						darts: item.darts, // Faktyczna liczba lotek z bazy danych
 						forfeited: item.forfeited === 1 || item.forfeited === true,
 					})
 				}>
@@ -270,7 +272,11 @@ export default function StatsScreen() {
 						<Stat label={strings.games} value={played} icon={'sports-soccer'} />
 						<Stat label={strings.bestAverage} value={bestAvg} icon={'star'} />
 						<Stat label={strings.overallAverage} value={allAvg} icon={'insert-chart'} />
-						<Stat label={strings.totalDarts} value={allDarts} icon={'gps-fixed'} />
+						<Stat label={strings.totalDarts} value={formatDarts(allDarts, {
+							dart: strings.dart,
+							dartsPlural: strings.dartsPlural,
+							dartsGenitive: strings.dartsGenitive,
+						})} icon={'gps-fixed'} />
 						<Stat label={strings.highestFinish} value={highestCheckout} icon={'trending-up'} />
 						<Stat label='180s' value={count180s} icon={'whatshot'} />
 						<Stat label='501' value={g501} icon={'filter-5'} />

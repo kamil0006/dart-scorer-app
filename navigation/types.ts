@@ -10,6 +10,7 @@ export type RootStackParamList = {
 		avg3: number;
 		date: string;
 		start: number; // 501 / 301
+		darts: number; // Faktyczna liczba lotek
 		forfeited?: boolean;
 		forfeitScore?: number;
 	};

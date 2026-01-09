@@ -129,6 +129,54 @@ const chart = new Map<number, string[]>([
 	[51, ['11', 'D20']],
 	// 50 and below
 	[50, ['Bull']],
+	[49, ['17', 'D16']],
+	[48, ['16', 'D16']],
+	[47, ['15', 'D16']],
+	[46, ['14', 'D16']],
+	[45, ['13', 'D16']],
+	[44, ['12', 'D16']],
+	[43, ['11', 'D16']],
+	[42, ['10', 'D16']],
+	[41, ['9', 'D16']],
+	[40, ['D20']],
+	[39, ['7', 'D16']],
+	[38, ['D19']],
+	[37, ['5', 'D16']],
+	[36, ['D18']],
+	[35, ['3', 'D16']],
+	[34, ['D17']],
+	[33, ['3', 'D15']], // Alternatywnie: ['1', 'D16']
+	[32, ['D16']],
+	[31, ['15', 'D8']], // Alternatywnie: ['7', 'D12']
+	[30, ['D15']],
+	[29, ['13', 'D8']],
+	[28, ['D14']],
+	[27, ['11', 'D8']],
+	[26, ['D13']],
+	[25, ['9', 'D8']],
+	[24, ['D12']],
+	[23, ['7', 'D8']],
+	[22, ['D11']],
+	[21, ['5', 'D8']],
+	[20, ['D10']],
+	[19, ['3', 'D8']],
+	[18, ['D9']],
+	[17, ['1', 'D8']], // Alternatywnie: ['9', 'D4']
+	[16, ['D8']],
+	[15, ['7', 'D4']],
+	[14, ['D7']],
+	[13, ['5', 'D4']],
+	[12, ['D6']],
+	[11, ['3', 'D4']],
+	[10, ['D5']],
+	[9, ['1', 'D4']], // Alternatywnie: ['5', 'D2']
+	[8, ['D4']],
+	[7, ['3', 'D2']],
+	[6, ['D3']],
+	[5, ['1', 'D2']],
+	[4, ['D2']],
+	[3, ['1', 'D1']],
+	[2, ['D1']],
 ]);
 
 // Fallback for simple doubles
@@ -170,4 +218,33 @@ export function calculateRemainingScore(currentScore: number, target: string): n
 // Get checkout for remaining score (for partial completions)
 export function getCheckoutForRemaining(remainingScore: number): string[] | undefined {
 	return getCheckout(remainingScore);
+}
+
+// Validate if actual hits form a valid checkout
+// Returns true if:
+// 1. The last hit is a double (required for checkout)
+// 2. The sum of points matches the checkout value
+// Note: We don't check exact order, as long as the sum is correct and ends with double
+export function validateCheckout(hits: { bed: number; m: 1 | 2 | 3 }[], checkout: string[]): boolean {
+	if (!checkout || checkout.length === 0) return false;
+	if (hits.length === 0) return false;
+
+	// Check if the last hit is a double (required for checkout)
+	const lastHit = hits[hits.length - 1];
+	if (lastHit.m !== 2) return false; // Last hit must be a double
+
+	// Calculate total points from hits
+	const totalPoints = hits.reduce((sum, hit) => sum + hit.bed * hit.m, 0);
+
+	// Calculate expected points from checkout
+	const expectedPoints = checkout.reduce((sum, target) => {
+		if (target === 'Bull') return sum + 50;
+		if (target === '25') return sum + 25;
+		if (target.startsWith('T')) return sum + parseInt(target.slice(1)) * 3;
+		if (target.startsWith('D')) return sum + parseInt(target.slice(1)) * 2;
+		return sum + parseInt(target) || 0;
+	}, 0);
+
+	// Points must match
+	return totalPoints === expectedPoints;
 }

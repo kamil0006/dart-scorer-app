@@ -37,6 +37,7 @@ type GameInput = {
 	checkout?: string;
 	forfeited?: boolean;
 	forfeitScore?: number;
+	checkoutDarts?: number; // Faktyczna liczba lotek w ostatniej turze przy checkoutie (tylko dla trybu simple)
 };
 
 /* ------------------------------------------------------------------------- */
@@ -116,10 +117,50 @@ export function initDB() {
 /* ------------------------------------------------------------------------- */
 /* 3. Zapis lega                                                             */
 /* ------------------------------------------------------------------------- */
-export function saveGame({ start, turns, hits, checkout, forfeited, forfeitScore }: GameInput) {
-	const darts = turns.length * 3;
+export function saveGame({ start, turns, hits, checkout, forfeited, forfeitScore, checkoutDarts }: GameInput) {
+	// Policz faktyczną liczbę lotek:
+	// - W trybie advanced: użyj długości tablicy hits (wszystkie lotki z gry)
+	// - W trybie simple: standardowo 3 lotki na turę, ALE jeśli jest checkout, ostatnia tura ma mniej lotek
+	const isAdvanced = hits && Array.isArray(hits) && hits.length > 0;
+	
+	let darts: number;
+	if (isAdvanced) {
+		// W trybie advanced: hits.length to faktyczna liczba lotek (wszystkie rzuty)
+		darts = hits.length;
+	} else {
+		// W trybie simple: standardowo 3 lotki na turę
+		// Jeśli jest checkout, ostatnia tura ma mniej lotek
+		const fullTurns = turns.length;
+		let lastTurnDarts = 3; // domyślnie 3 lotki w ostatniej turze
+		
+		if (checkout) {
+			// Jeśli podano checkoutDarts (z modala), użyj tej wartości
+			// W przeciwnym razie oszacuj z checkout string
+			if (checkoutDarts && checkoutDarts >= 1 && checkoutDarts <= 3) {
+				lastTurnDarts = checkoutDarts;
+			} else {
+				// Parsuj checkout string, aby oszacować liczbę lotek
+				// Przykład: "D19" = 1 lotka, "T20 D20" = 2 lotki, "T20 T20 Bull" = 3 lotki
+				const checkoutParts = checkout.trim().split(/\s+/);
+				lastTurnDarts = checkoutParts.length;
+			}
+		}
+		
+		// Jeśli jest checkout, ostatnia tura ma lastTurnDarts lotek, pozostałe po 3
+		// Jeśli nie ma checkoutu, wszystkie tury mają po 3 lotki
+		if (checkout && fullTurns > 0) {
+			darts = (fullTurns - 1) * 3 + lastTurnDarts;
+		} else {
+			darts = fullTurns * 3;
+		}
+	}
+	
 	const scored = turns.reduce((s, t) => s + t, 0);
-	const avg3 = (scored / darts) * 3;
+	
+	// Profesjonalna formuła średniej w darcie: (suma punktów / liczba lotek) * 3
+	// To daje średnią punktów na 3 lotki (standardowa metryka w darcie)
+	// Zabezpieczenie przed dzieleniem przez zero
+	const avg3 = darts > 0 ? (scored / darts) * 3 : 0;
 
 	db.runSync(
 		`INSERT INTO games

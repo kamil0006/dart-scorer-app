@@ -58,6 +58,7 @@ export interface LocalizedStrings {
 	last5Games: string;
 	last10Games: string;
 	bestCheckout: string;
+	checkout: string;
 	overallPerformance: string;
 	modeComparison: string;
 
@@ -124,6 +125,12 @@ export interface LocalizedStrings {
 	avg: string;
 	darts: string;
 	points: string;
+	
+	// Checkout modal
+	checkoutDartsQuestion: string;
+	dart: string; // 1 lotka
+	dartsPlural: string; // 2-4 lotki
+	dartsGenitive: string; // 5+ lotek
 
 	// Training Mode
 	trainingMode: string;
@@ -280,6 +287,12 @@ const polishStrings: LocalizedStrings = {
 	avg: 'Średnia',
 	darts: 'Lotki',
 	points: 'pkt',
+	
+	// Checkout modal
+	checkoutDartsQuestion: 'Ile lotek użyłeś w ostatniej turze?',
+	dart: 'lotka', // 1 lotka
+	dartsPlural: 'lotki', // 2-4 lotki
+	dartsGenitive: 'lotek', // 5+ lotek
 
 	// Enhanced Statistics
 	totalGames: 'Łącznie gier',
@@ -292,6 +305,7 @@ const polishStrings: LocalizedStrings = {
 	last5Games: 'Ostatnie 5 gier',
 	last10Games: 'Ostatnie 10 gier',
 	bestCheckout: 'Najlepszy finish',
+	checkout: 'Checkout',
 	overallPerformance: 'Ogólna wydajność',
 	modeComparison: 'Porównanie trybów',
 
@@ -455,6 +469,12 @@ const englishStrings: LocalizedStrings = {
 	avg: 'Average',
 	darts: 'Darts',
 	points: 'pts',
+	
+	// Checkout modal
+	checkoutDartsQuestion: 'How many darts did you use in the last turn?',
+	dart: 'dart', // 1 dart
+	dartsPlural: 'darts', // 2+ darts
+	dartsGenitive: 'darts', // 5+ darts (same as plural in English)
 
 	// Enhanced Statistics
 	totalGames: 'Total Games',
@@ -467,6 +487,7 @@ const englishStrings: LocalizedStrings = {
 	last5Games: 'Last 5 Games',
 	last10Games: 'Last 10 Games',
 	bestCheckout: 'Best Checkout',
+	checkout: 'Checkout',
 	overallPerformance: 'Overall Performance',
 	modeComparison: 'Mode Comparison',
 
