@@ -11,7 +11,7 @@ export function getComprehensiveStats() {
 	if (games.length === 0) {
 		return {
 			totalGames: 0,
-			gameVariants: { '301': 0, '501': 0 },
+			gameVariants: { '301': 0, '401': 0, '501': 0 },
 			modeStats: { simple: 0, advanced: 0 },
 			performance: { bestAvg: 0, overallAvg: 0, totalDarts: 0, totalScore: 0 },
 			completion: { completed: 0, forfeited: 0, successRate: 0 },
@@ -25,7 +25,8 @@ export function getComprehensiveStats() {
 	// Basic counts
 	const totalGames = games.length;
 	const g501 = games.filter(g => g.start === 501).length;
-	const g301 = totalGames - g501;
+	const g401 = games.filter(g => g.start === 401).length;
+	const g301 = games.filter(g => g.start === 301).length;
 
 	// Mode detection and counting
 	const modeStats = { simple: 0, advanced: 0 };
@@ -144,7 +145,7 @@ export function getComprehensiveStats() {
 
 	return {
 		totalGames,
-		gameVariants: { '301': g301, '501': g501 },
+		gameVariants: { '301': g301, '401': g401, '501': g501 },
 		modeStats,
 		modePerformance,
 		performance: {
@@ -190,8 +191,8 @@ export function getModeSpecificStats() {
 	const games = db.getAllSync('SELECT * FROM games ORDER BY id DESC;') as any[];
 
 	const modeStats = {
-		simple: { games: 0, avg3: 0, bestAvg: 0, totalDarts: 0, totalScore: 0, variants: { '301': 0, '501': 0 } },
-		advanced: { games: 0, avg3: 0, bestAvg: 0, totalDarts: 0, totalScore: 0, variants: { '301': 0, '501': 0 } },
+		simple: { games: 0, avg3: 0, bestAvg: 0, totalDarts: 0, totalScore: 0, variants: { '301': 0, '401': 0, '501': 0 } },
+		advanced: { games: 0, avg3: 0, bestAvg: 0, totalDarts: 0, totalScore: 0, variants: { '301': 0, '401': 0, '501': 0 } },
 	};
 
 	games.forEach(game => {
@@ -201,7 +202,7 @@ export function getModeSpecificStats() {
 		modeStats[mode].games++;
 		modeStats[mode].totalDarts += game.darts;
 		modeStats[mode].totalScore += game.scored;
-		modeStats[mode].variants[game.start as '301' | '501']++;
+		modeStats[mode].variants[String(game.start) as '301' | '401' | '501']++;
 
 		if (game.avg3 > modeStats[mode].bestAvg) {
 			modeStats[mode].bestAvg = game.avg3;

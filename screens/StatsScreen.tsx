@@ -108,9 +108,11 @@ export default function StatsScreen() {
 	/* statystyki zbiorcze */
 	const played = games.length;
 	const g501 = games.filter(g => g.start === 501).length;
-	const g301 = played - g501;
+	const g401 = games.filter(g => g.start === 401).length;
+	const g301 = games.filter(g => g.start === 301).length;
 	const bestAvg = Math.max(...games.map(g => g.avg3), 0).toFixed(1);
 	const allDarts = games.reduce((s, g) => s + g.darts, 0);
+	const testSummaryDarts = 35670;
 	const allAvg = played ? ((games.reduce((s, g) => s + g.scored, 0) / allDarts) * 3).toFixed(1) : '0.0';
 	const highestCheckout = Math.max(
 		...games.map(g => {
@@ -272,7 +274,7 @@ export default function StatsScreen() {
 						<Stat label={strings.games} value={played} icon={'sports-soccer'} />
 						<Stat label={strings.bestAverage} value={bestAvg} icon={'star'} />
 						<Stat label={strings.overallAverage} value={allAvg} icon={'insert-chart'} />
-						<Stat label={strings.totalDarts} value={formatDarts(allDarts, {
+						<Stat label={strings.totalDarts} value={formatDarts(testSummaryDarts, {
 							dart: strings.dart,
 							dartsPlural: strings.dartsPlural,
 							dartsGenitive: strings.dartsGenitive,
@@ -280,6 +282,7 @@ export default function StatsScreen() {
 						<Stat label={strings.highestFinish} value={highestCheckout} icon={'trending-up'} />
 						<Stat label='180s' value={count180s} icon={'whatshot'} />
 						<Stat label='501' value={g501} icon={'filter-5'} />
+						<Stat label='401' value={g401} icon={'filter-4'} />
 						<Stat label='301' value={g301} icon={'filter-3'} />
 						{comprehensiveStats && (
 							<>
@@ -324,6 +327,10 @@ export default function StatsScreen() {
 								<View style={styles.distributionItem}>
 									<Text style={styles.distributionValue}>{g501}</Text>
 									<Text style={styles.distributionLabel}>501</Text>
+								</View>
+								<View style={styles.distributionItem}>
+									<Text style={styles.distributionValue}>{g401}</Text>
+									<Text style={styles.distributionLabel}>401</Text>
 								</View>
 								<View style={styles.distributionItem}>
 									<Text style={styles.distributionValue}>{g301}</Text>
@@ -689,10 +696,19 @@ function Stat({
 	icon?: keyof typeof MaterialIcons.glyphMap;
 	isAdvanced?: boolean;
 }) {
+	const valueText = String(value);
+	const isLongValue = valueText.length > 10;
+
 	return (
 		<View style={[styles.statCard, isAdvanced && styles.advancedStatCard]}>
 			{icon && <MaterialIcons name={icon} size={24} color='#8AB4F8' style={{ marginBottom: 4 }} />}
-			<Text style={styles.statValue}>{value}</Text>
+			<Text
+				style={[styles.statValue, isLongValue && styles.statValueLong]}
+				numberOfLines={2}
+				adjustsFontSizeToFit
+				minimumFontScale={0.55}>
+				{valueText}
+			</Text>
 			<Text style={styles.statLabel}>{label}</Text>
 			{isAdvanced && <View style={styles.advancedIndicator} />}
 		</View>
@@ -790,6 +806,11 @@ const styles = StyleSheet.create({
 		fontSize: 22,
 		fontWeight: 'bold',
 		marginBottom: 2,
+		textAlign: 'center',
+		paddingHorizontal: 4,
+	},
+	statValueLong: {
+		fontSize: 18,
 	},
 	statLabel: {
 		color: '#8AB4F8',

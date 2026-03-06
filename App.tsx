@@ -35,7 +35,7 @@ function StatsStackScreen() {
 	);
 }
 
-/* ---------------------------- stos do gry (501/301) --------------------------- */
+/* ------------------------- stos do gry (501/401/301) ------------------------- */
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function PlayStack() {

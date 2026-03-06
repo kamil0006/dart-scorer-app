@@ -17,6 +17,7 @@ export interface LocalizedStrings {
 
 	// Game Variants
 	variant301: string;
+	variant401: string;
 	variant501: string;
 	selectVariant: string;
 
@@ -180,6 +181,31 @@ export interface LocalizedStrings {
 	// UI Info
 	areVisibleIn: string;
 	tab: string;
+
+	// Data Backup
+	dataBackup: string;
+	dataBackupDescription: string;
+	dataExport: string;
+	dataImport: string;
+	backupHowItWorks: string;
+	backupStep1: string;
+	backupStep2: string;
+	backupStep3: string;
+	backupStep4: string;
+	backupSavedLocation: string;
+	backupImportModeTitle: string;
+	backupImportModeMessage: string;
+	backupImportMerge: string;
+	backupImportReplace: string;
+	backupInProgress: string;
+	backupExportSuccessTitle: string;
+	backupExportSuccessMessage: string;
+	backupExportShareUnavailable: string;
+	backupImportSuccessTitle: string;
+	backupImportSuccessMessage: string;
+	backupErrorExport: string;
+	backupErrorImport: string;
+	backupErrorInvalidFile: string;
 }
 
 const polishStrings: LocalizedStrings = {
@@ -199,6 +225,7 @@ const polishStrings: LocalizedStrings = {
 
 	// Game Variants
 	variant301: '301',
+	variant401: '401',
 	variant501: '501',
 	selectVariant: 'Wybierz wariant',
 
@@ -356,6 +383,32 @@ const polishStrings: LocalizedStrings = {
 	areVisibleIn: 'są widoczne w',
 	tab: 'zakładce',
 
+	// Data Backup
+	dataBackup: 'Kopia danych',
+	dataBackupDescription:
+		'Twoje dane są zapisane lokalnie na tym telefonie. Przed zmianą urządzenia wykonaj eksport do pliku, a na nowym telefonie użyj importu.',
+	dataExport: 'Eksport danych',
+	dataImport: 'Import danych',
+	backupHowItWorks: 'Jak to działa?',
+	backupStep1: '1. Kliknij Eksport danych, aby utworzyć plik JSON.',
+	backupStep2: '2. Plik zapisuje się w folderze aplikacji i otwiera się okno udostępniania.',
+	backupStep3: '3. Wyślij plik na komputer, e-mail lub do chmury.',
+	backupStep4: '4. Na nowym telefonie pobierz plik i użyj opcji Import danych.',
+	backupSavedLocation: 'Lokalizacja zapisu',
+	backupImportModeTitle: 'Tryb importu',
+	backupImportModeMessage: 'Wybierz jak zaimportować dane.',
+	backupImportMerge: 'Scal z obecnymi',
+	backupImportReplace: 'Zastąp obecne',
+	backupInProgress: 'Trwa operacja backupu...',
+	backupExportSuccessTitle: 'Eksport zakończony',
+	backupExportSuccessMessage: 'Utworzono plik kopii zapasowej.',
+	backupExportShareUnavailable: 'Udostępnianie plików nie jest dostępne na tym urządzeniu.',
+	backupImportSuccessTitle: 'Import zakończony',
+	backupImportSuccessMessage: 'Dane zostały poprawnie zaimportowane.',
+	backupErrorExport: 'Nie udało się wyeksportować danych.',
+	backupErrorImport: 'Nie udało się zaimportować danych.',
+	backupErrorInvalidFile: 'Wybrany plik nie jest poprawnym backupem.',
+
 	// Training Statistics
 	trainingSessions: 'Sesje Treningowe',
 	trainingSuccess: 'Skuteczność Treningu',
@@ -381,6 +434,7 @@ const englishStrings: LocalizedStrings = {
 
 	// Game Variants
 	variant301: '301',
+	variant401: '401',
 	variant501: '501',
 	selectVariant: 'Select variant',
 
@@ -537,6 +591,32 @@ const englishStrings: LocalizedStrings = {
 	// UI Info
 	areVisibleIn: 'are visible in',
 	tab: 'tab',
+
+	// Data Backup
+	dataBackup: 'Data Backup',
+	dataBackupDescription:
+		'Your data is stored locally on this phone. Before changing devices, export your data to a file, then import it on the new phone.',
+	dataExport: 'Export data',
+	dataImport: 'Import data',
+	backupHowItWorks: 'How it works',
+	backupStep1: '1. Tap Export data to generate a JSON backup file.',
+	backupStep2: '2. The file is saved in the app documents folder and the share sheet opens.',
+	backupStep3: '3. Send the file to your computer, email, or cloud storage.',
+	backupStep4: '4. On the new phone, download the file and use Import data.',
+	backupSavedLocation: 'Saved location',
+	backupImportModeTitle: 'Import mode',
+	backupImportModeMessage: 'Choose how to import data.',
+	backupImportMerge: 'Merge with current',
+	backupImportReplace: 'Replace current',
+	backupInProgress: 'Backup operation in progress...',
+	backupExportSuccessTitle: 'Export completed',
+	backupExportSuccessMessage: 'Backup file has been created.',
+	backupExportShareUnavailable: 'File sharing is not available on this device.',
+	backupImportSuccessTitle: 'Import completed',
+	backupImportSuccessMessage: 'Data has been imported successfully.',
+	backupErrorExport: 'Failed to export data.',
+	backupErrorImport: 'Failed to import data.',
+	backupErrorInvalidFile: 'The selected file is not a valid backup.',
 
 	// Training Statistics
 	trainingSessions: 'Training Sessions',

@@ -11,6 +11,7 @@ export type NewGameScreenProps = {
 
 export default function NewGameScreen({ navigation }: NewGameScreenProps) {
 	const [variant, setVariant] = useState<GameVariant>('501');
+	const variantValues: GameVariant[] = ['501', '401', '301'];
 
 	const handleStart = () =>
 		navigation.navigate('Game', {
@@ -21,9 +22,9 @@ export default function NewGameScreen({ navigation }: NewGameScreenProps) {
 	return (
 		<View style={styles.wrapper}>
 			<SegmentedControl
-				values={['501', '301']}
-				selectedIndex={variant === '501' ? 0 : 1}
-				onChange={e => setVariant(e.nativeEvent.selectedSegmentIndex === 0 ? '501' : '301')}
+				values={variantValues}
+				selectedIndex={variantValues.indexOf(variant)}
+				onChange={e => setVariant(variantValues[e.nativeEvent.selectedSegmentIndex])}
 				style={{ width: 280, height: 50 }}
 			/>
 
