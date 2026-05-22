@@ -11,6 +11,9 @@ export type RootStackParamList = {
 		date: string;
 		start: number; // 501 / 401 / 301
 		darts: number; // Faktyczna liczba lotek
+		scored?: number;
+		checkout?: string | null;
+		hits?: string | null;
 		forfeited?: boolean;
 		forfeitScore?: number;
 	};

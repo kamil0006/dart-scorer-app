@@ -2,7 +2,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
-import { db } from './db';
+import appConfig from '../app.json';
+import { db, GameRow } from './db';
 
 const BACKUP_SCHEMA_VERSION = 1;
 
@@ -12,11 +13,32 @@ type BackupPayload = {
 	schemaVersion: number;
 	appVersion: string;
 	exportedAt: string;
-	games: any[];
-	trainingSessions: any[];
+	games: GameBackupRow[];
+	trainingSessions: TrainingSessionBackupRow[];
 };
 
-function safeJsonArray(value: unknown): any[] {
+type RawRecord = Record<string, unknown>;
+
+type GameBackupRow = GameRow & RawRecord;
+
+type TrainingSessionBackupRow = {
+	id?: number;
+	date?: string;
+	targets?: number;
+	hits?: number;
+	misses?: number;
+	duration?: number;
+	success_rate?: number;
+	successRate?: number;
+	training_mode?: string;
+	trainingMode?: string;
+	targets_practiced?: unknown;
+	targetsPracticed?: unknown;
+	target_results?: unknown;
+	targetResults?: unknown;
+};
+
+function safeJsonArray(value: unknown): unknown[] {
 	if (Array.isArray(value)) return value;
 	if (typeof value === 'string') {
 		try {
@@ -29,6 +51,10 @@ function safeJsonArray(value: unknown): any[] {
 	return [];
 }
 
+function safeNumberArray(value: unknown): number[] {
+	return safeJsonArray(value).map(item => toNumber(item, 0));
+}
+
 function toNumber(value: unknown, fallback: number): number {
 	if (typeof value === 'number' && Number.isFinite(value)) return value;
 	if (typeof value === 'string') {
@@ -38,13 +64,17 @@ function toNumber(value: unknown, fallback: number): number {
 	return fallback;
 }
 
+function isRecord(value: unknown): value is RawRecord {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function getBackupPayload(): BackupPayload {
-	const games = db.getAllSync('SELECT * FROM games ORDER BY id ASC;') as any[];
-	const trainingSessions = db.getAllSync('SELECT * FROM training_sessions ORDER BY id ASC;') as any[];
+	const games = db.getAllSync('SELECT * FROM games ORDER BY id ASC;') as GameBackupRow[];
+	const trainingSessions = db.getAllSync('SELECT * FROM training_sessions ORDER BY id ASC;') as TrainingSessionBackupRow[];
 
 	return {
 		schemaVersion: BACKUP_SCHEMA_VERSION,
-		appVersion: '1.0.0',
+		appVersion: appConfig.expo.version,
 		exportedAt: new Date().toISOString(),
 		games,
 		trainingSessions,
@@ -102,17 +132,21 @@ export async function pickBackupFile() {
 	return result.assets[0];
 }
 
-function validateBackupPayload(payload: any): payload is BackupPayload {
+function validateBackupPayload(payload: unknown): payload is BackupPayload {
 	return (
-		typeof payload === 'object' &&
-		payload !== null &&
+		isRecord(payload) &&
+		(payload.schemaVersion === undefined || typeof payload.schemaVersion === 'number') &&
+		(payload.appVersion === undefined || typeof payload.appVersion === 'string') &&
+		(payload.exportedAt === undefined || typeof payload.exportedAt === 'string') &&
 		Array.isArray(payload.games) &&
-		Array.isArray(payload.trainingSessions)
+		payload.games.every(isRecord) &&
+		Array.isArray(payload.trainingSessions) &&
+		payload.trainingSessions.every(isRecord)
 	);
 }
 
-function insertGame(raw: any) {
-	const turnsArray = safeJsonArray(raw?.turns);
+function insertGame(raw: RawRecord) {
+	const turnsArray = safeNumberArray(raw.turns);
 	const hitsArray = safeJsonArray(raw?.hits);
 
 	const start = toNumber(raw?.start, 501);
@@ -128,8 +162,8 @@ function insertGame(raw: any) {
 
 	const forfeited = raw?.forfeited === 1 || raw?.forfeited === true ? 1 : 0;
 	const forfeitScore = raw?.forfeitScore == null ? null : toNumber(raw?.forfeitScore, 0);
-	const checkout = typeof raw?.checkout === 'string' && raw.checkout.length > 0 ? raw.checkout : null;
-	const date = typeof raw?.date === 'string' && raw.date.length > 0 ? raw.date : new Date().toISOString();
+	const checkout = typeof raw.checkout === 'string' && raw.checkout.length > 0 ? raw.checkout : null;
+	const date = typeof raw.date === 'string' && raw.date.length > 0 ? raw.date : new Date().toISOString();
 
 	db.runSync(
 		`INSERT INTO games
@@ -148,14 +182,24 @@ function insertGame(raw: any) {
 	);
 }
 
-function insertTrainingSession(raw: any) {
-	const date = typeof raw?.date === 'string' && raw.date.length > 0 ? raw.date : new Date().toISOString();
+function insertTrainingSession(raw: RawRecord) {
+	const date = typeof raw.date === 'string' && raw.date.length > 0 ? raw.date : new Date().toISOString();
 	const targets = toNumber(raw?.targets, 0);
 	const hits = toNumber(raw?.hits, 0);
 	const misses = toNumber(raw?.misses, 0);
 	const duration = toNumber(raw?.duration, 0);
 	const successRate = toNumber(raw?.success_rate ?? raw?.successRate, 0);
-	const trainingMode = raw?.training_mode === 'checkout' || raw?.trainingMode === 'checkout' ? 'checkout' : 'target';
+	const rawMode = raw?.training_mode ?? raw?.trainingMode;
+	const trainingMode =
+		rawMode === 'checkout' ||
+		rawMode === 'clockClassic' ||
+		rawMode === 'clockDouble' ||
+		rawMode === 'clockTriple' ||
+		rawMode === 'clockJump' ||
+		rawMode === 'clockPenalty' ||
+		rawMode === 'bobs27'
+			? rawMode
+			: 'target';
 	const targetsPracticed = safeJsonArray(raw?.targets_practiced ?? raw?.targetsPracticed);
 	const targetResults = safeJsonArray(raw?.target_results ?? raw?.targetResults);
 
@@ -177,7 +221,12 @@ function insertTrainingSession(raw: any) {
 
 export async function importBackupFromFile(uri: string, mode: ImportMode) {
 	const raw = await new File(uri).text();
-	const parsed = JSON.parse(raw);
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		throw new Error('Invalid backup format');
+	}
 
 	if (!validateBackupPayload(parsed)) {
 		throw new Error('Invalid backup format');

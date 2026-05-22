@@ -1,13 +1,12 @@
 {
   "expo": {
-    "name": "dart-scorer",
+    "name": "Dart Scorer",
     "slug": "dart-scorer",
-    "version": "1.9.0",
+    "version": "1.10.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "dartscorer",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -17,7 +16,8 @@
         "backgroundColor": "#121212"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.dartscorer"
+      "package": "com.anonymous.dartscorer",
+      "versionCode": 9
     },
     "plugins": [
       [
@@ -31,10 +31,9 @@
       ],
       "expo-sqlite",
       "expo-font",
-      "expo-web-browser"
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
+      "expo-web-browser",
+      "expo-image",
+      "expo-sharing"
+    ]
   }
 }

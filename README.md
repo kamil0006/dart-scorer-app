@@ -1,62 +1,89 @@
 # Dart Scorer
 
-A React Native (Expo) mobile app for dart scoring, training, and statistics.
+A React Native / Expo mobile app for steel darts scoring, training, statistics, and local data backup.
 
 ## Overview
 
-`Dart Scorer` is a score-tracking app for steel darts with:
+`Dart Scorer` is built for local dart sessions on Android. It supports classic `301`, `401`, and `501` games, simple score entry, advanced dart-by-dart input, checkout suggestions, training sessions, and long-term statistics.
 
-- game variants: `301`, `401`, `501`
-- simple and advanced throw input
-- checkout suggestions
-- match and training statistics
-- local data backup/import (JSON)
-- Polish and English UI
+The app stores data locally on the device and can export/import a JSON backup.
 
-## Main Features
+## Features
 
 - **Game variants**: `301`, `401`, `501`
-- **Advanced mode**: throw-by-throw tracking and dartboard interaction
-- **Statistics**: overall summary, detailed metrics, mode comparison, trends
-- **Training mode**: target training and checkout training
-- **Forfeit support**: store unfinished games with remaining score
-- **Data backup**:
-  - export local database data to JSON
-  - import JSON as merge or replace
-  - share backup file from device
-- **Localization**: Polish/English switch in settings
+- **Simple scoring mode**: fast turn score entry
+- **Advanced scoring mode**: dart-by-dart input, dartboard picker, heatmap
+- **Checkout suggestions**: validated checkout table from `2` to `170`
+- **Checkout darts modal**: accurate final-turn dart count for averages
+- **Game history**: completed and forfeited games with detail view
+- **Game details**:
+  - remaining score after each turn
+  - best turn
+  - average turn
+  - `100+` visits
+  - turns below `45`
+  - checkout value and path
+  - read-only heatmap for advanced games
+- **Statistics**:
+  - PDC-style three-dart average
+  - score ranges
+  - mode comparison
+  - checkout profile
+  - trends and game length
+- **Training modes**:
+  - target practice
+  - checkout practice
+  - classic clock
+  - double clock
+  - triple clock
+  - jump clock
+  - penalty clock
+  - Bob's 27
+- **Training history**:
+  - filters by mode
+  - Bob's 27 win/loss status
+  - swipe-to-delete sessions
+- **Backup / restore**:
+  - export games and training sessions to JSON
+  - import by merge or replace
+- **Localization**:
+  - Polish
+  - English
 
 ## Tech Stack
 
-- **Expo SDK**: `54`
-- **React Native**: `0.81`
-- **React**: `19`
-- **TypeScript**: `5.9`
-- **SQLite** (`expo-sqlite`) for persistent local storage
-- **AsyncStorage** for app settings
+- Expo SDK `55`
+- React Native `0.83`
+- React `19.2`
+- TypeScript `5.9`
+- SQLite via `expo-sqlite`
+- AsyncStorage for app settings
+- React Navigation
+- Hermes on Android release builds
 
 ## Project Structure
 
 ```text
 dart-scorer/
-├── components/
-├── database/
-├── lib/
-│   ├── checkout.ts
-│   ├── dataBackup.ts
-│   ├── db.ts
-│   ├── gameVariant.ts
-│   ├── localization.ts
-│   └── settings.ts
-├── navigation/
-├── screens/
-│   ├── GameScreen.tsx
-│   ├── NewGameScreen.tsx
-│   ├── SettingsScreen.tsx
-│   ├── StatsDetailScreen.tsx
-│   ├── StatsScreen.tsx
-│   └── TrainingScreen.tsx
-└── android/
+|-- android/
+|-- components/
+|-- database/
+|-- hooks/
+|-- lib/
+|   |-- checkout.ts
+|   |-- dartsStats.ts
+|   |-- dataBackup.ts
+|   |-- db.ts
+|   |-- gameVariant.ts
+|   |-- localization.ts
+|   `-- settings.ts
+|-- navigation/
+|-- screens/
+|-- tests/
+|-- App.tsx
+|-- index.js
+|-- app.json
+`-- package.json
 ```
 
 ## Getting Started
@@ -65,32 +92,56 @@ dart-scorer/
 
 - Node.js `18+`
 - npm
-- Android Studio (for Android builds)
-- (optional) Xcode/macOS for native iOS builds
+- Android Studio / Android SDK for Android builds
+- USB debugging enabled on Android device for direct installation
 
 ### Install
 
 ```bash
-git clone https://github.com/yourusername/dart-scorer.git
-cd dart-scorer
 npm install
 ```
 
-### Run Dev
+### Run in development
 
 ```bash
 npm start
+```
+
+Android:
+
+```bash
 npm run android
+```
+
+Web:
+
+```bash
 npm run web
 ```
 
-## Build & Release
+## Quality Checks
 
-### Android local build
-
-From `android/`:
+Run before committing:
 
 ```bash
+npx tsc --noEmit
+npm test
+npm run lint
+```
+
+## Android Release Build
+
+Current app identity:
+
+- Display name: `Dart Scorer`
+- Android package: `com.anonymous.dartscorer`
+- Version: `1.10.0`
+- Android versionCode: `9`
+
+Build APK:
+
+```powershell
+cd android
 .\gradlew.bat assembleRelease
 ```
 
@@ -100,76 +151,96 @@ APK output:
 android/app/build/outputs/apk/release/app-release.apk
 ```
 
-For Google Play (`.aab`):
+Install with ADB:
 
-```bash
-.\gradlew.bat bundleRelease
+```powershell
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" install -r C:\Users\Kamil\dart-scorer\android\app\build\outputs\apk\release\app-release.apk
 ```
 
-AAB output:
+If build cache causes issues:
 
-```text
-android/app/build/outputs/bundle/release/app-release.aab
+```powershell
+cd android
+.\gradlew.bat clean
+.\gradlew.bat assembleRelease
 ```
 
-### Versioning before release
+## Android Build Notes
 
-Update:
+- `index.js` is required for native release bundling.
+- `android/app/build.gradle` points Hermes to `node_modules/hermes-compiler/hermesc/...`.
+- `MainApplication.kt` uses `DefaultReactHost` for the current React Native / Expo setup.
+- Before production publishing, replace the debug signing config with a proper release keystore.
 
-- `android/app/build.gradle`
-  - `versionCode` (+1 each release)
-  - `versionName` (human-readable app version)
-- `app.json`
-  - `expo.version` (keep aligned with release version)
+## Versioning
+
+Before a release, keep these aligned:
+
+- `package.json` -> `version`
+- `app.json` -> `expo.version`
+- `app.json` -> `expo.android.versionCode`
+- `android/app/build.gradle` -> `versionName`
+- `android/app/build.gradle` -> `versionCode`
+
+Increase `versionCode` for every Android release.
 
 ## Data Storage
 
 The app stores data locally in SQLite.
 
-### `games` table
+### `games`
 
-- start score (`301/401/501`)
-- turns, darts count, average
-- checkout info
-- forfeit status and remaining score
+- start score
+- turns
+- hits for advanced mode
+- darts count
+- scored points
+- three-dart average
+- checkout path
+- forfeit status
+- remaining score on forfeit
 
-### `training_sessions` table
+### `training_sessions`
 
-- targets/hits/misses
-- duration and success rate
-- training mode and practiced targets
+- training mode
+- targets practiced
+- target results
+- hits/misses
+- duration
+- success rate
 
 ## Backup / Restore
 
-In `Settings` you can:
+In Settings:
 
-- **Export data** -> create JSON backup file
-- **Import data** -> choose JSON backup and:
-  - merge with current data
-  - replace current data
+1. Export data to JSON.
+2. Save or share the file.
+3. Import it on the same or another device.
+4. Choose merge or replace.
 
-Typical migration flow:
+## Tests
 
-1. Export backup on old device
-2. Send file to cloud/email/computer
-3. Download file on new device
-4. Import in app settings
+The test suite covers:
 
-## Localization
+- checkout chart validity
+- checkout-ending dart rules
+- turn resolution and busts
+- PDC-style average calculation
+- stored data parsing
+- checkout statistics helpers
 
-Supported languages:
+Run:
 
-- Polish (`pl`)
-- English (`en`)
-
-All key UI sections (gameplay, stats, settings, backup) are localized.
+```bash
+npm test
+```
 
 ## Notes
 
-- Current Android release config should use a proper release keystore before production publishing.
-- Test core flows after each release build: game start/end, stats, training, export/import.
+- The app is currently focused on local/offline use.
+- Android release build configuration is included, but production signing still needs a real keystore.
+- Backup is JSON-based and intended for manual migration between devices.
 
 ## Support
 
-- Email: `cheyseee98@gmail.com`
-
+Email: `cheyseee98@gmail.com`

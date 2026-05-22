@@ -47,12 +47,12 @@ const chart = new Map<number, string[]>([
 	[126, ['T19', 'T19', 'D6']],
 	[125, ['25', 'T20', 'D20']],
 	[124, ['T20', 'T16', 'D8']],
-	[123, ['T19', 'T16', 'D12']],
-	[122, ['T18', 'T18', 'D11']],
+	[123, ['T19', 'T16', 'D9']],
+	[122, ['T18', 'T18', 'D7']],
 	[121, ['T20', 'T11', 'D14']],
 	// 120–111
 	[120, ['T20', '20', 'D20']],
-	[119, ['T19', 'T12', 'D11']],
+	[119, ['T19', 'T10', 'D16']],
 	[118, ['T20', '18', 'D20']],
 	[117, ['T20', '17', 'D20']],
 	[116, ['T20', '16', 'D20']],
@@ -203,7 +203,7 @@ export function calculateRemainingScore(currentScore: number, target: string): n
 	if (target === '25') return currentScore - 25;
 
 	const type = target[0];
-	const value = parseInt(target.slice(1));
+	const value = type === 'T' || type === 'D' ? parseInt(target.slice(1), 10) : parseInt(target, 10);
 
 	switch (type) {
 		case 'T':
@@ -231,10 +231,14 @@ export function validateCheckout(hits: { bed: number; m: 1 | 2 | 3 }[], checkout
 
 	// Check if the last hit is a double (required for checkout)
 	const lastHit = hits[hits.length - 1];
-	if (lastHit.m !== 2) return false; // Last hit must be a double
+	const isBull = lastHit.bed === 50;
+	if ((lastHit.m !== 2 || lastHit.bed === 25) && !isBull) return false;
 
 	// Calculate total points from hits
-	const totalPoints = hits.reduce((sum, hit) => sum + hit.bed * hit.m, 0);
+	const totalPoints = hits.reduce((sum, hit) => {
+		if (hit.bed === 50) return sum + 50;
+		return sum + hit.bed * hit.m;
+	}, 0);
 
 	// Calculate expected points from checkout
 	const expectedPoints = checkout.reduce((sum, target) => {

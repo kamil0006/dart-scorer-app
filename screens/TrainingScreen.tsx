@@ -1,11 +1,21 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { saveTrainingSession, TrainingSession } from '../database/trainingRepository';
-import { useLanguage } from '../lib/LanguageContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { saveTrainingSession } from '../database/trainingRepository';
+import type { TrainingMode, TrainingSession } from '../database/trainingRepository';
 import { calculateRemainingScore, getCheckout, getCheckoutForRemaining } from '../lib/checkout';
+import { useLanguage } from '../lib/LanguageContext';
+import type { LocalizedStrings } from '../lib/localization';
 
 type TargetType = 'single' | 'double' | 'triple';
+type Attempt = { target: string; hit: boolean; index?: number };
+
+type ModalButton = {
+	text: string;
+	onPress: () => void;
+	style?: 'default' | 'cancel' | 'destructive';
+};
 
 interface Target {
 	value: number;
@@ -14,292 +24,190 @@ interface Target {
 	points: number;
 }
 
+const TARGET_TYPES: TargetType[] = ['single', 'double', 'triple'];
+const CHECKOUT_SCORES = Array.from({ length: 131 }, (_, index) => index + 40).filter(score => getCheckout(score));
+const CLOCK_MODES: TrainingMode[] = ['clockClassic', 'clockDouble', 'clockTriple', 'clockJump', 'clockPenalty'];
+const CLOCK_SEQUENCE = [...Array.from({ length: 20 }, (_, index) => index + 1), 25, 50];
+
+function formatDuration(seconds: number) {
+	const minutes = Math.floor(seconds / 60);
+	const rest = String(seconds % 60).padStart(2, '0');
+	return `${minutes}:${rest}`;
+}
+
+function randomItem<T>(items: T[]): T {
+	return items[Math.floor(Math.random() * items.length)];
+}
+
+function createTarget(): Target {
+	const type = randomItem(TARGET_TYPES);
+	const value = Math.floor(Math.random() * 20) + 1;
+
+	if (type === 'double') {
+		return { type, value, display: `D${value}`, points: value * 2 };
+	}
+	if (type === 'triple') {
+		return { type, value, display: `T${value}`, points: value * 3 };
+	}
+	return { type, value, display: String(value), points: value };
+}
+
+function isClockMode(mode: TrainingMode) {
+	return CLOCK_MODES.includes(mode);
+}
+
+function getClockStart(mode: TrainingMode) {
+	return 1;
+}
+
+function getClockTarget(mode: TrainingMode, value: number, hitKind?: 'miss' | 1 | 2 | 3) {
+	if (value === 50) return 'Bull';
+	if (value === 25) return '25';
+	if (mode === 'clockClassic') return String(value);
+	if (mode === 'clockDouble') return `D${value}`;
+	if (mode === 'clockTriple') return `T${value}`;
+	if (hitKind === 2) return `D${value}`;
+	if (hitKind === 3) return `T${value}`;
+	return String(value);
+}
+
+function getClockIndex(value: number) {
+	const index = CLOCK_SEQUENCE.indexOf(value);
+	return index >= 0 ? index : 0;
+}
+
+function moveClock(value: number, steps: number) {
+	const nextIndex = Math.max(0, Math.min(CLOCK_SEQUENCE.length - 1, getClockIndex(value) + steps));
+	return CLOCK_SEQUENCE[nextIndex];
+}
+
+function isClockFinished(value: number, hit: boolean) {
+	return hit && getClockIndex(value) === CLOCK_SEQUENCE.length - 1;
+}
+
+function isClockSpecialTarget(value: number) {
+	return value === 25 || value === 50;
+}
+
+function getTrainingModeTitle(mode: TrainingMode, strings: LocalizedStrings) {
+	switch (mode) {
+		case 'checkout':
+			return strings.checkoutPractice;
+		case 'clockClassic':
+			return strings.clockClassic;
+		case 'clockDouble':
+			return strings.clockDouble;
+		case 'clockTriple':
+			return strings.clockTriple;
+		case 'clockJump':
+			return strings.clockJump;
+		case 'clockPenalty':
+			return strings.clockPenalty;
+		case 'bobs27':
+			return strings.bobs27;
+		default:
+			return strings.practiceTargets;
+	}
+}
+
+function getTrainingModeDescription(mode: TrainingMode, strings: LocalizedStrings) {
+	switch (mode) {
+		case 'checkout':
+			return strings.checkoutPracticeDescription;
+		case 'clockClassic':
+			return strings.clockClassicDescription;
+		case 'clockDouble':
+			return strings.clockDoubleDescription;
+		case 'clockTriple':
+			return strings.clockTripleDescription;
+		case 'clockJump':
+			return strings.clockJumpDescription;
+		case 'clockPenalty':
+			return strings.clockPenaltyDescription;
+		case 'bobs27':
+			return strings.bobs27Description;
+		default:
+			return strings.targetPracticeDescription;
+	}
+}
+
 export default function TrainingScreen() {
 	const { strings } = useLanguage();
-	const [trainingMode, setTrainingMode] = useState<'target' | 'checkout'>('target');
-	const [currentTarget, setCurrentTarget] = useState<Target | null>(null);
+	const [trainingMode, setTrainingMode] = useState<TrainingMode>('target');
 	const [sessionStarted, setSessionStarted] = useState(false);
-	const [sessionStats, setSessionStats] = useState({
-		targets: 0,
-		hits: 0,
-		misses: 0,
-		startTime: Date.now(),
-	});
-	const [targetsPracticed, setTargetsPracticed] = useState<string[]>([]);
-	const [targetResults, setTargetResults] = useState<{ target: string; hit: boolean }[]>([]);
+	const [sessionDuration, setSessionDuration] = useState(0);
+	const [startedAt, setStartedAt] = useState(Date.now());
 
-	// Checkout practice state
+	const [currentTarget, setCurrentTarget] = useState<Target>(() => createTarget());
+	const [targetAttempts, setTargetAttempts] = useState<Attempt[]>([]);
+	const [clockNumber, setClockNumber] = useState(1);
+	const [bobsTarget, setBobsTarget] = useState(1);
+	const [bobsDartsAtTarget, setBobsDartsAtTarget] = useState(0);
+	const [bobsHitsAtTarget, setBobsHitsAtTarget] = useState(0);
+	const [bobsScore, setBobsScore] = useState(27);
+
 	const [currentCheckout, setCurrentCheckout] = useState<number | null>(null);
 	const [checkoutTargets, setCheckoutTargets] = useState<string[]>([]);
-	const [checkoutProgress, setCheckoutProgress] = useState<{ target: string; hit: boolean }[]>([]);
+	const [checkoutProgress, setCheckoutProgress] = useState<Attempt[]>([]);
 	const [checkoutCompleted, setCheckoutCompleted] = useState(false);
-	const [remainingScore, setRemainingScore] = useState<number | null>(null); // Track remaining score after partial hits
-	const [allCheckoutTargets, setAllCheckoutTargets] = useState<string[]>([]); // Track ALL targets from ALL checkouts
-	const [allCheckoutResults, setAllCheckoutResults] = useState<{ target: string; hit: boolean }[]>([]); // Track ALL results from ALL checkouts
+	const [checkoutHistory, setCheckoutHistory] = useState<Attempt[]>([]);
 	const [checkoutStats, setCheckoutStats] = useState({
-		attempts: 0,
-		successes: 0,
-		totalCheckouts: 0, // Track total checkouts attempted
-		completedCheckouts: 0, // Track completed checkouts
-		totalTargets: 0, // Track total targets attempted
-		hitTargets: 0, // Track total targets hit
-		startTime: Date.now(),
+		totalCheckouts: 0,
+		completedCheckouts: 0,
+		totalTargets: 0,
+		hitTargets: 0,
 	});
 
-	// Custom modal state
 	const [showModal, setShowModal] = useState(false);
 	const [modalConfig, setModalConfig] = useState<{
 		title: string;
 		message: string;
-		buttons: { text: string; onPress: () => void; style?: 'default' | 'cancel' | 'destructive' }[];
+		buttons: ModalButton[];
 	} | null>(null);
 
-	// Constants for target generation
-	const TARGET_TYPES: TargetType[] = ['single', 'double', 'triple'];
-	const MAX_TARGET_VALUE = 20;
+	const targetStats = useMemo(() => {
+		const hits = targetAttempts.filter(attempt => attempt.hit).length;
+		const total = targetAttempts.length;
+		return {
+			total,
+			hits,
+			misses: total - hits,
+			successRate: total > 0 ? Math.round((hits / total) * 100) : 0,
+		};
+	}, [targetAttempts]);
 
-	// Generate a new random target
-	const generateTarget = useCallback(() => {
-		const type = TARGET_TYPES[Math.floor(Math.random() * TARGET_TYPES.length)];
-		const value = Math.floor(Math.random() * MAX_TARGET_VALUE) + 1;
+	const checkoutSuccessRate = useMemo(() => {
+		if (checkoutStats.totalTargets === 0) return 0;
+		return Math.round((checkoutStats.hitTargets / checkoutStats.totalTargets) * 100);
+	}, [checkoutStats.hitTargets, checkoutStats.totalTargets]);
 
-		let display: string;
-		let points: number;
-
-		switch (type) {
-			case 'single':
-				display = value.toString();
-				points = value;
-				break;
-			case 'double':
-				display = `D${value}`;
-				points = value * 2;
-				break;
-			case 'triple':
-				display = `T${value}`;
-				points = value * 3;
-				break;
-		}
-
-		setCurrentTarget({ value, type, display, points });
-	}, []);
-
-	// Generate a new checkout scenario
-	const generateCheckout = useCallback(() => {
-		// Generate a random score between 40 and 170 for checkout practice
-		const score = Math.floor(Math.random() * 131) + 40;
-		const targets = getCheckout(score);
-
-		if (targets) {
-			setCurrentCheckout(score);
-			setCheckoutTargets(targets);
-			setCheckoutProgress([]);
-			setCheckoutCompleted(false);
-			setRemainingScore(null); // Reset remaining score
-			// Add new checkout targets to the list of all targets practiced
-			setAllCheckoutTargets(prev => [...prev, ...targets]);
-			// Reset checkout stats for new checkout
-			setCheckoutStats(prev => ({
-				...prev,
-				attempts: 0,
-				successes: 0,
-				totalCheckouts: prev.totalCheckouts + 1, // Increment total checkouts
-			}));
-		} else {
-			// If no checkout found, try again with a different score
-			// This prevents infinite recursion
-			setTimeout(() => generateCheckout(), 100);
-		}
-	}, []);
-
-	// Retry checkout with remaining score
-	const retryCheckout = useCallback(() => {
-		if (remainingScore !== null) {
-			const targets = getCheckoutForRemaining(remainingScore);
-			if (targets) {
-				setCheckoutTargets(targets);
-				setCheckoutProgress([]);
-				setCheckoutCompleted(false);
-				// Add new targets to the list of all targets practiced
-				setAllCheckoutTargets(prev => [...prev, ...targets]);
-				// Reset attempts for retry (don't count towards total checkout stats)
-				setCheckoutStats(prev => ({
-					...prev,
-					attempts: 0,
-				}));
-			}
-		}
-	}, [remainingScore]);
-
-	// Auto-generate scenarios when mode changes
-	useEffect(() => {
-		if (trainingMode === 'target') {
-			// Clear checkout data and generate new target
-			setCurrentCheckout(null);
-			setCheckoutTargets([]);
-			setCheckoutProgress([]);
-			setCheckoutCompleted(false);
-			setRemainingScore(null);
-			setAllCheckoutTargets([]);
-			setAllCheckoutResults([]);
-			setCheckoutStats({
-				attempts: 0,
-				successes: 0,
-				totalCheckouts: 0,
-				completedCheckouts: 0,
-				totalTargets: 0,
-				hitTargets: 0,
-				startTime: Date.now(),
-			});
-			generateTarget();
-		} else if (trainingMode === 'checkout') {
-			// Clear target data and generate new checkout
-			setCurrentTarget(null);
-			setTargetsPracticed([]);
-			setTargetResults([]);
-			setSessionStats({
-				targets: 0,
-				hits: 0,
-				misses: 0,
-				startTime: Date.now(),
-			});
-			generateCheckout();
-		}
-	}, [trainingMode, generateTarget, generateCheckout]);
-
-	// Generate initial target when component mounts
-	useEffect(() => {
-		generateTarget();
-	}, [generateTarget]);
-
-	// Handle checkout target hit/miss
-	const handleCheckoutResult = useCallback(
-		(target: string, hit: boolean) => {
-			// Prevent multiple clicks on the same target
-			if (checkoutProgress.some(p => p.target === target)) {
-				return;
-			}
-
-			// Track individual target attempts and hits
-			setCheckoutStats(prev => ({
-				...prev,
-				totalTargets: prev.totalTargets + 1,
-				hitTargets: prev.hitTargets + (hit ? 1 : 0),
-			}));
-
-			setCheckoutProgress(prev => {
-				const newProgress = [...prev, { target, hit }];
-
-				// Track this result in the comprehensive results array
-				setAllCheckoutResults(prevResults => {
-					// Check if this target already exists in results
-					const existingIndex = prevResults.findIndex(r => r.target === target);
-					if (existingIndex >= 0) {
-						// Update existing result
-						const updatedResults = [...prevResults];
-						updatedResults[existingIndex] = { target, hit };
-						return updatedResults;
-					} else {
-						// Add new result
-						return [...prevResults, { target, hit }];
-					}
-				});
-
-				// Check if checkout is completed
-				if (hit) {
-					const allTargetsHit = checkoutTargets.every(t => newProgress.some(p => p.target === t && p.hit));
-					if (allTargetsHit) {
-						setCheckoutCompleted(true);
-						// Only increment completedCheckouts for original checkouts, not retries
-						if (!remainingScore) {
-							setCheckoutStats(prev => ({
-								...prev,
-								completedCheckouts: prev.completedCheckouts + 1,
-							}));
-						}
-					} else {
-						// Calculate remaining score for partial completion
-						const currentScore = currentCheckout || 0;
-						const hitTargets = newProgress.filter(p => p.hit).map(p => p.target);
-						let remaining = currentScore;
-
-						// Subtract points from all hit targets
-						hitTargets.forEach(hitTarget => {
-							remaining = calculateRemainingScore(remaining, hitTarget);
-						});
-
-						if (remaining > 0) {
-							setRemainingScore(remaining);
-						}
-					}
+	const activeStats =
+		trainingMode === 'checkout'
+			? {
+					total: checkoutStats.totalTargets,
+					hits: checkoutStats.hitTargets,
+					misses: checkoutStats.totalTargets - checkoutStats.hitTargets,
+					successRate: checkoutSuccessRate,
 				}
+			: targetStats;
 
-				return newProgress;
-			});
+	const recentAttempts = trainingMode === 'checkout' ? checkoutHistory.slice(-8).reverse() : targetAttempts.slice(-8).reverse();
 
-			// Only increment attempts for the original checkout (not retries)
-			// This prevents retry attempts from affecting the success rate
-			if (!remainingScore) {
-				setCheckoutStats(prev => ({
-					...prev,
-					attempts: prev.attempts + 1,
-				}));
-			}
-		},
-		[checkoutTargets, checkoutProgress, currentCheckout, remainingScore]
-	);
+	const generateCheckout = useCallback((countAsNewCheckout = true) => {
+		const score = randomItem(CHECKOUT_SCORES);
+		const targets = getCheckout(score);
+		if (!targets) return;
 
-	// Check if all targets have been attempted (hit or missed)
-	const allTargetsAttempted = useMemo(() => {
-		return checkoutTargets.every(target => checkoutProgress.some(p => p.target === target));
-	}, [checkoutTargets, checkoutProgress]);
+		setCurrentCheckout(score);
+		setCheckoutTargets(targets);
+		setCheckoutProgress([]);
+		setCheckoutCompleted(false);
 
-	// Handle hit/miss
-	const handleResult = useCallback(
-		(hit: boolean) => {
-			if (!currentTarget) return;
-
-			const targetDisplay = currentTarget.display;
-
-			// Track practiced targets (only if not already practiced)
-			setTargetsPracticed(prev => (prev.includes(targetDisplay) ? prev : [...prev, targetDisplay]));
-
-			// Track individual target results
-			setTargetResults(prev => [...prev, { target: targetDisplay, hit }]);
-
-			// Update session stats
-			setSessionStats(prev => ({
-				...prev,
-				targets: prev.targets + 1,
-				hits: prev.hits + (hit ? 1 : 0),
-				misses: prev.misses + (hit ? 0 : 1),
-			}));
-
-			// Generate next target immediately
-			generateTarget();
-		},
-		[currentTarget, generateTarget]
-	);
-
-	// Calculate success rate throughout the session
-	const successRate = useMemo(() => {
-		if (sessionStats.targets === 0) return 0;
-		return Math.round((sessionStats.hits / sessionStats.targets) * 100);
-	}, [sessionStats.targets, sessionStats.hits]);
-
-	// Calculate session duration starting from 0
-	const [sessionDuration, setSessionDuration] = useState(0);
-
-	// Generate first target on component mount with a small delay
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			generateTarget();
-		}, 500); // Small delay to make it feel less automated
-
-		return () => clearTimeout(timer);
+		if (countAsNewCheckout) {
+			setCheckoutStats(prev => ({ ...prev, totalCheckouts: prev.totalCheckouts + 1 }));
+		}
 	}, []);
 
-	// Real-time timer update
 	useEffect(() => {
 		if (!sessionStarted) {
 			setSessionDuration(0);
@@ -307,101 +215,312 @@ export default function TrainingScreen() {
 		}
 
 		const interval = setInterval(() => {
-			const duration = Math.floor((Date.now() - sessionStats.startTime) / 1000);
-			setSessionDuration(duration);
-		}, 1000); // Update every second
+			setSessionDuration(Math.floor((Date.now() - startedAt) / 1000));
+		}, 1000);
 
 		return () => clearInterval(interval);
-	}, [sessionStarted, sessionStats.startTime]);
+	}, [sessionStarted, startedAt]);
 
-	// Initial session state
-	const initialSessionStats = useMemo(
-		() => ({
-			targets: 0,
-			hits: 0,
-			misses: 0,
-			startTime: Date.now(),
-		}),
-		[]
-	);
+	useEffect(() => {
+		if (trainingMode === 'target') {
+			setCurrentTarget(createTarget());
+			return;
+		}
 
-	// Start training session
-	const startSession = useCallback(() => {
-		setSessionStarted(true);
-		setSessionStats({
-			...initialSessionStats,
-			startTime: Date.now(),
-		});
-		setTargetsPracticed([]);
-		setTargetResults([]);
-		setSessionDuration(0);
+		if (trainingMode === 'checkout' && !currentCheckout) {
+			generateCheckout(false);
+		}
+	}, [trainingMode, currentCheckout, generateCheckout]);
 
-		// Reset checkout stats with new start time
+	const showCustomModal = useCallback((config: { title: string; message: string; buttons: ModalButton[] }) => {
+		setModalConfig(config);
+		setShowModal(true);
+	}, []);
+
+	const resetCheckoutState = useCallback(() => {
+		setCurrentCheckout(null);
+		setCheckoutTargets([]);
+		setCheckoutProgress([]);
+		setCheckoutCompleted(false);
+		setCheckoutHistory([]);
 		setCheckoutStats({
-			attempts: 0,
-			successes: 0,
 			totalCheckouts: 0,
 			completedCheckouts: 0,
 			totalTargets: 0,
 			hitTargets: 0,
-			startTime: Date.now(),
 		});
-		setAllCheckoutTargets([]); // Reset all checkout targets
-		setCheckoutTargets([]);
-		setRemainingScore(null);
+	}, []);
+
+	const resetSessionData = useCallback(() => {
+		setSessionStarted(false);
+		setSessionDuration(0);
+		setStartedAt(Date.now());
+		setTargetAttempts([]);
+		setCurrentTarget(createTarget());
+		setClockNumber(getClockStart(trainingMode));
+		setBobsTarget(1);
+		setBobsDartsAtTarget(0);
+		setBobsHitsAtTarget(0);
+		setBobsScore(27);
+		resetCheckoutState();
+	}, [resetCheckoutState, trainingMode]);
+
+	const startSession = useCallback(() => {
+		setSessionStarted(true);
+		setSessionDuration(0);
+		setStartedAt(Date.now());
+		setTargetAttempts([]);
+		setClockNumber(getClockStart(trainingMode));
+		setBobsTarget(1);
+		setBobsDartsAtTarget(0);
+		setBobsHitsAtTarget(0);
+		setBobsScore(27);
+		resetCheckoutState();
 
 		if (trainingMode === 'target') {
-			generateTarget();
-		} else {
-			generateCheckout();
+			setCurrentTarget(createTarget());
+		} else if (trainingMode === 'checkout') {
+			generateCheckout(true);
 		}
-	}, [initialSessionStats, generateTarget, generateCheckout, trainingMode]);
+	}, [generateCheckout, resetCheckoutState, trainingMode]);
 
-	// Save training session
-	const saveSession = async () => {
-		if (trainingMode === 'target' && sessionStats.targets === 0) return;
-		if (trainingMode === 'checkout' && checkoutStats.totalCheckouts === 0) return;
-
-		let session: TrainingSession;
-
-		if (trainingMode === 'target') {
-			session = {
-				date: new Date().toISOString(),
-				targets: sessionStats.targets,
-				hits: sessionStats.hits,
-				misses: sessionStats.misses,
-				duration: Math.floor((Date.now() - sessionStats.startTime) / 1000),
-				successRate: successRate,
-				trainingMode: 'target',
-				targetsPracticed,
-				targetResults,
-			};
+	const changeMode = (mode: TrainingMode) => {
+		if (sessionStarted) return;
+		setTrainingMode(mode);
+		if (mode === 'target') {
+			setCurrentTarget(createTarget());
+		} else if (mode === 'checkout') {
+			generateCheckout(false);
 		} else {
-			// For checkout practice, create a session with checkout-specific data
-			// Calculate checkout success rate based on individual target hits vs attempts
-			const checkoutSuccessRate =
-				checkoutStats.totalTargets > 0 ? Math.round((checkoutStats.hitTargets / checkoutStats.totalTargets) * 100) : 0;
-
-			session = {
-				date: new Date().toISOString(),
-				targets: checkoutStats.totalTargets, // Use total targets attempted
-				hits: checkoutStats.hitTargets,
-				misses: checkoutStats.totalTargets - checkoutStats.hitTargets,
-				duration: Math.floor((Date.now() - sessionStats.startTime) / 1000),
-				successRate: checkoutSuccessRate,
-				trainingMode: 'checkout',
-				targetsPracticed: allCheckoutTargets, // Use ALL targets from ALL checkouts
-				targetResults: allCheckoutResults, // Use the comprehensive results we've been tracking
-			};
+			setClockNumber(getClockStart(mode));
+			setBobsTarget(1);
+			setBobsDartsAtTarget(0);
+			setBobsHitsAtTarget(0);
+			setBobsScore(27);
 		}
+	};
+
+	const recordTargetAttempt = (hit: boolean) => {
+		if (!sessionStarted) return;
+		setTargetAttempts(prev => [...prev, { target: currentTarget.display, hit }]);
+		setCurrentTarget(createTarget());
+	};
+
+	const saveCompletedClockSession = async (attempts: Attempt[]) => {
+		const hits = attempts.filter(attempt => attempt.hit).length;
+		const total = attempts.length;
+		const session: TrainingSession = {
+			date: new Date().toISOString(),
+			targets: total,
+			hits,
+			misses: total - hits,
+			duration: sessionDuration,
+			successRate: total > 0 ? Math.round((hits / total) * 100) : 0,
+			trainingMode,
+			targetsPracticed: attempts.map(attempt => attempt.target),
+			targetResults: attempts,
+		};
 
 		try {
-			const sessionId = await saveTrainingSession(session);
-
+			await saveTrainingSession(session);
 			showCustomModal({
 				title: strings.sessionSaved,
 				message: strings.sessionSavedMessage,
-				buttons: [{ text: strings.ok, onPress: () => setShowModal(false), style: 'default' }],
+				buttons: [{ text: strings.ok, onPress: () => setShowModal(false) }],
+			});
+			resetSessionData();
+		} catch (error) {
+			console.error('Failed to save training session:', error);
+			showCustomModal({
+				title: strings.saveError,
+				message: strings.saveErrorMsg,
+				buttons: [{ text: strings.ok, onPress: () => setShowModal(false), style: 'destructive' }],
+			});
+		}
+	};
+
+	const saveCompletedBobsSession = async (attempts: Attempt[], finalScore: number, eliminated = false) => {
+		const hits = attempts.filter(attempt => attempt.hit).length;
+		const total = attempts.length;
+		const session: TrainingSession = {
+			date: new Date().toISOString(),
+			targets: total,
+			hits,
+			misses: total - hits,
+			duration: sessionDuration,
+			successRate: total > 0 ? Math.round((hits / total) * 100) : 0,
+			trainingMode: 'bobs27',
+			targetsPracticed: attempts.map(attempt => attempt.target),
+			targetResults: [
+				...attempts,
+				{ target: `Score ${finalScore}`, hit: finalScore > 0 },
+				{ target: eliminated ? 'Result lost' : 'Result won', hit: !eliminated },
+			],
+		};
+
+		try {
+			await saveTrainingSession(session);
+			showCustomModal({
+				title: eliminated ? strings.bobs27GameOverTitle : strings.sessionSaved,
+				message: `${eliminated ? strings.bobs27GameOverMessage : strings.sessionSavedMessage}\n\n${strings.score}: ${finalScore}`,
+				buttons: [{ text: strings.ok, onPress: () => setShowModal(false) }],
+			});
+			resetSessionData();
+		} catch (error) {
+			console.error('Failed to save training session:', error);
+			showCustomModal({
+				title: strings.saveError,
+				message: strings.saveErrorMsg,
+				buttons: [{ text: strings.ok, onPress: () => setShowModal(false), style: 'destructive' }],
+			});
+		}
+	};
+
+	const recordClockAttempt = (kind: 'miss' | 1 | 2 | 3) => {
+		if (!sessionStarted || !isClockMode(trainingMode)) return;
+
+		const display = getClockTarget(trainingMode, clockNumber, kind);
+		const hit = kind !== 'miss';
+		const nextAttempts = [...targetAttempts, { target: display, hit }];
+		setTargetAttempts(nextAttempts);
+
+		if (isClockFinished(clockNumber, hit)) {
+			void saveCompletedClockSession(nextAttempts);
+			return;
+		}
+
+		setClockNumber(current => {
+			if (trainingMode === 'clockClassic') {
+				return hit ? moveClock(current, 1) : current;
+			}
+
+			if (trainingMode === 'clockDouble' || trainingMode === 'clockTriple') {
+				return hit ? moveClock(current, 1) : current;
+			}
+
+			if (trainingMode === 'clockJump') {
+				return hit ? moveClock(current, kind) : current;
+			}
+
+			if (hit) return moveClock(current, kind);
+			return moveClock(current, -1);
+		});
+	};
+
+	const recordBobsAttempt = (hit: boolean) => {
+		if (!sessionStarted || trainingMode !== 'bobs27') return;
+
+		const target = `D${bobsTarget}`;
+		const nextAttempts = [...targetAttempts, { target, hit }];
+		const nextDartsAtTarget = bobsDartsAtTarget + 1;
+		const nextHitsAtTarget = bobsHitsAtTarget + (hit ? 1 : 0);
+		const hitValue = bobsTarget * 2;
+		const scoreAfterHit = hit ? bobsScore + hitValue : bobsScore;
+		const targetComplete = nextDartsAtTarget >= 3;
+		const scoreAfterPenalty = targetComplete && nextHitsAtTarget === 0 ? scoreAfterHit - hitValue : scoreAfterHit;
+
+		setTargetAttempts(nextAttempts);
+		setBobsScore(scoreAfterPenalty);
+
+		if (targetComplete && scoreAfterPenalty <= 0) {
+			void saveCompletedBobsSession(nextAttempts, scoreAfterPenalty, true);
+			return;
+		}
+
+		if (targetComplete && bobsTarget >= 20) {
+			void saveCompletedBobsSession(nextAttempts, scoreAfterPenalty);
+			return;
+		}
+
+		if (targetComplete) {
+			setBobsTarget(current => Math.min(20, current + 1));
+			setBobsDartsAtTarget(0);
+			setBobsHitsAtTarget(0);
+			return;
+		}
+
+		setBobsDartsAtTarget(nextDartsAtTarget);
+		setBobsHitsAtTarget(nextHitsAtTarget);
+	};
+
+	const finishCheckoutTarget = (target: string, targetIndex: number, hit: boolean) => {
+		if (!sessionStarted || checkoutProgress.some(attempt => attempt.index === targetIndex)) return;
+
+		const nextProgress = [...checkoutProgress, { target, hit, index: targetIndex }];
+		setCheckoutProgress(nextProgress);
+		setCheckoutHistory(prev => [...prev, { target, hit }]);
+		setCheckoutStats(prev => ({
+			...prev,
+			totalTargets: prev.totalTargets + 1,
+			hitTargets: prev.hitTargets + (hit ? 1 : 0),
+		}));
+
+		if (!hit || !currentCheckout) return;
+
+		const remaining = nextProgress
+			.filter(attempt => attempt.hit)
+			.reduce((score, attempt) => calculateRemainingScore(score, attempt.target), currentCheckout);
+
+		if (remaining === 0 && checkoutTargets.every((_, index) => nextProgress.some(attempt => attempt.index === index && attempt.hit))) {
+			setCheckoutCompleted(true);
+			setCheckoutStats(prev => ({ ...prev, completedCheckouts: prev.completedCheckouts + 1 }));
+		}
+	};
+
+	const retryCheckout = () => {
+		if (!currentCheckout) return;
+
+		const remaining = checkoutProgress
+			.filter(attempt => attempt.hit)
+			.reduce((score, attempt) => calculateRemainingScore(score, attempt.target), currentCheckout);
+
+		const nextTargets = remaining > 1 ? getCheckoutForRemaining(remaining) : null;
+		if (!nextTargets) {
+			generateCheckout(true);
+			return;
+		}
+
+		setCurrentCheckout(remaining);
+		setCheckoutTargets(nextTargets);
+		setCheckoutProgress([]);
+		setCheckoutCompleted(false);
+	};
+
+	const saveSession = async () => {
+		if (trainingMode !== 'checkout' && targetStats.total === 0) return;
+		if (trainingMode === 'checkout' && checkoutStats.totalTargets === 0) return;
+
+		const session: TrainingSession =
+			trainingMode !== 'checkout'
+				? {
+						date: new Date().toISOString(),
+						targets: targetStats.total,
+						hits: targetStats.hits,
+						misses: targetStats.misses,
+						duration: sessionDuration,
+						successRate: targetStats.successRate,
+						trainingMode,
+						targetsPracticed: targetAttempts.map(attempt => attempt.target),
+						targetResults: targetAttempts,
+					}
+				: {
+						date: new Date().toISOString(),
+						targets: checkoutStats.totalTargets,
+						hits: checkoutStats.hitTargets,
+						misses: checkoutStats.totalTargets - checkoutStats.hitTargets,
+						duration: sessionDuration,
+						successRate: checkoutSuccessRate,
+						trainingMode: 'checkout',
+						targetsPracticed: checkoutHistory.map(attempt => attempt.target),
+						targetResults: checkoutHistory,
+					};
+
+		try {
+			await saveTrainingSession(session);
+			showCustomModal({
+				title: strings.sessionSaved,
+				message: strings.sessionSavedMessage,
+				buttons: [{ text: strings.ok, onPress: () => setShowModal(false) }],
 			});
 		} catch (error) {
 			console.error('Failed to save training session:', error);
@@ -413,7 +532,6 @@ export default function TrainingScreen() {
 		}
 	};
 
-	// Reset session
 	const resetSession = () => {
 		showCustomModal({
 			title: strings.resetSession,
@@ -422,7 +540,6 @@ export default function TrainingScreen() {
 				{ text: strings.cancel, onPress: () => setShowModal(false), style: 'cancel' },
 				{
 					text: strings.saveAndReset,
-					style: 'default',
 					onPress: async () => {
 						setShowModal(false);
 						await saveSession();
@@ -431,318 +548,325 @@ export default function TrainingScreen() {
 				},
 				{
 					text: strings.reset,
-					style: 'destructive',
 					onPress: () => {
 						setShowModal(false);
 						resetSessionData();
 					},
+					style: 'destructive',
 				},
 			],
 		});
 	};
 
-	// Show custom modal
-	const showCustomModal = useCallback(
-		(config: {
-			title: string;
-			message: string;
-			buttons: { text: string; onPress: () => void; style?: 'default' | 'cancel' | 'destructive' }[];
-		}) => {
-			setModalConfig(config);
-			setShowModal(true);
-		},
-		[]
-	);
-
-	// Reset session data
-	const resetSessionData = useCallback(() => {
-		setSessionStarted(false);
-		setSessionStats(initialSessionStats);
-		setTargetsPracticed([]);
-		setTargetResults([]);
-		setCurrentTarget(null);
-		setSessionDuration(0);
-
-		// Reset checkout practice state
-		setCurrentCheckout(null);
-		setCheckoutTargets([]);
-		setCheckoutProgress([]);
-		setCheckoutCompleted(false);
-		setRemainingScore(null);
-		setAllCheckoutTargets([]); // Reset all checkout targets
-		setAllCheckoutResults([]); // Reset all checkout results
-		setCheckoutStats({
-			attempts: 0,
-			successes: 0,
-			totalCheckouts: 0,
-			completedCheckouts: 0,
-			totalTargets: 0,
-			hitTargets: 0,
-			startTime: Date.now(),
-		});
-	}, [initialSessionStats]);
-
-	// Note: Debug functions removed - training sessions now appear in Statistics tab
+	const canSaveSession = trainingMode === 'checkout' ? checkoutStats.totalTargets > 0 : targetStats.total > 0;
+	const modeTitle = getTrainingModeTitle(trainingMode, strings);
+	const modeDescription = getTrainingModeDescription(trainingMode, strings);
+	const currentCheckoutDone =
+		checkoutTargets.length > 0 && checkoutTargets.every((_, index) => checkoutProgress.some(attempt => attempt.index === index));
 
 	return (
-		<View style={styles.container}>
-			{/* Mode Selector */}
-			{!sessionStarted && (
-				<View style={styles.modeSelector}>
-					<Text style={styles.modeSelectorTitle}>{strings.trainingMode}</Text>
-					<View style={styles.modeButtons}>
-						<Pressable
-							style={[styles.modeButton, trainingMode === 'target' && styles.modeButtonActive]}
-							onPress={() => setTrainingMode('target')}>
-							<Text style={[styles.modeButtonText, trainingMode === 'target' && styles.modeButtonTextActive]}>
-								{strings.practiceTargets}
-							</Text>
-						</Pressable>
-						<Pressable
-							style={[styles.modeButton, trainingMode === 'checkout' && styles.modeButtonActive]}
-							onPress={() => setTrainingMode('checkout')}>
-							<Text style={[styles.modeButtonText, trainingMode === 'checkout' && styles.modeButtonTextActive]}>
-								{strings.checkoutPractice}
-							</Text>
-						</Pressable>
+		<SafeAreaView style={styles.container}>
+			<ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+				<View style={styles.header}>
+					<View style={styles.headerTitleBlock}>
+						<Text style={styles.eyebrow}>{strings.trainingMode}</Text>
+						<Text style={styles.title} numberOfLines={2}>
+							{modeTitle}
+						</Text>
+					</View>
+					<View style={styles.headerActions}>
+						<View style={styles.timerPill}>
+							<MaterialIcons name='timer' size={18} color='#E7EEF7' />
+							<Text style={styles.timerText}>{formatDuration(sessionDuration)}</Text>
+						</View>
+						{sessionStarted && (
+							<Pressable style={styles.exitButton} onPress={resetSessionData}>
+								<MaterialIcons name='close' size={18} color='#E7EEF7' />
+								<Text style={styles.exitButtonText}>{strings.close}</Text>
+							</Pressable>
+						)}
 					</View>
 				</View>
-			)}
 
-			{/* Current Target Display */}
-			{!sessionStarted ? (
-				<View style={styles.startSection}>
-					<Text style={styles.startTitle}>
-						{trainingMode === 'target' ? strings.practiceTargets : strings.checkoutPractice}
-					</Text>
-					<Text style={styles.startSubtitle}>
-						{trainingMode === 'target' ? strings.targetPracticeDescription : strings.checkoutPracticeDescription}
-					</Text>
+				{!sessionStarted && (
+					<View style={styles.modeGrid}>
+						<ModeCard
+							active={trainingMode === 'target'}
+							color='#8AB4F8'
+							icon='gps-fixed'
+							title={strings.practiceTargets}
+							description={strings.targetPracticeDescription}
+							onPress={() => changeMode('target')}
+						/>
+						<ModeCard
+							active={trainingMode === 'checkout'}
+							color='#5BD3C7'
+							icon='sports-score'
+							title={strings.checkoutPractice}
+							description={strings.checkoutPracticeDescription}
+							onPress={() => changeMode('checkout')}
+						/>
+						<ModeCard
+							active={trainingMode === 'clockClassic'}
+							color='#8AB4F8'
+							icon='schedule'
+							title={strings.clockClassic}
+							description={strings.clockClassicDescription}
+							onPress={() => changeMode('clockClassic')}
+						/>
+						<ModeCard
+							active={trainingMode === 'clockDouble'}
+							color='#C6A7FF'
+							icon='adjust'
+							title={strings.clockDouble}
+							description={strings.clockDoubleDescription}
+							onPress={() => changeMode('clockDouble')}
+						/>
+						<ModeCard
+							active={trainingMode === 'clockTriple'}
+							color='#F2C94C'
+							icon='change-history'
+							title={strings.clockTriple}
+							description={strings.clockTripleDescription}
+							onPress={() => changeMode('clockTriple')}
+						/>
+						<ModeCard
+							active={trainingMode === 'clockJump'}
+							color='#60D394'
+							icon='double-arrow'
+							title={strings.clockJump}
+							description={strings.clockJumpDescription}
+							onPress={() => changeMode('clockJump')}
+						/>
+						<ModeCard
+							active={trainingMode === 'clockPenalty'}
+							color='#D94A5A'
+							icon='keyboard-return'
+							title={strings.clockPenalty}
+							description={strings.clockPenaltyDescription}
+							onPress={() => changeMode('clockPenalty')}
+						/>
+						<ModeCard
+							active={trainingMode === 'bobs27'}
+							color='#F2994A'
+							icon='filter-9-plus'
+							title={strings.bobs27}
+							description={strings.bobs27Description}
+							onPress={() => changeMode('bobs27')}
+						/>
+					</View>
+				)}
+
+				{sessionStarted && (
+					<View style={[styles.focusPanel, trainingMode === 'checkout' && styles.checkoutPanel]}>
+						<View style={styles.focusTopRow}>
+							<View style={styles.focusLabel}>
+								<MaterialIcons
+									name={trainingMode === 'checkout' ? 'sports-score' : 'gps-fixed'}
+									size={18}
+									color={trainingMode === 'checkout' ? '#5BD3C7' : '#8AB4F8'}
+								/>
+								<Text style={styles.focusLabelText}>
+									{trainingMode === 'checkout' ? strings.checkoutTarget : strings.currentTarget}
+								</Text>
+							</View>
+							<Text style={styles.focusMeta}>{activeStats.successRate}%</Text>
+						</View>
+
+						{trainingMode === 'target' ? (
+							<>
+								<Text style={[styles.focusValue, styles.targetValue]}>{currentTarget.display}</Text>
+								<Text style={styles.focusHint}>
+									{currentTarget.points} {strings.points}
+								</Text>
+							</>
+						) : trainingMode === 'checkout' ? (
+							<>
+								<Text style={[styles.focusValue, styles.checkoutValue]}>{currentCheckout ?? '-'}</Text>
+								<View style={styles.checkoutPath}>
+									{checkoutTargets.map((target, index) => {
+										const attempt = checkoutProgress.find(item => item.index === index);
+										return (
+											<View
+												key={`${target}-${index}`}
+												style={[
+													styles.pathChip,
+													attempt?.hit && styles.pathChipHit,
+													attempt && !attempt.hit && styles.pathChipMiss,
+												]}>
+												<Text style={styles.pathChipText}>{target}</Text>
+												{attempt?.hit && <MaterialIcons name='check' size={14} color='#fff' />}
+												{attempt && !attempt.hit && <MaterialIcons name='close' size={14} color='#fff' />}
+											</View>
+										);
+									})}
+								</View>
+								<Text style={styles.focusHint}>
+									{checkoutCompleted ? strings.checkoutSuccess : `${strings.targetsToHit}: ${checkoutTargets.join(' / ')}`}
+								</Text>
+							</>
+						) : trainingMode === 'bobs27' ? (
+							<>
+								<Text style={[styles.focusValue, styles.targetValue]}>{`D${bobsTarget}`}</Text>
+								<Text style={styles.focusHint}>
+									{strings.score}: {bobsScore} | {bobsDartsAtTarget}/3
+								</Text>
+							</>
+						) : (
+							<>
+								<Text style={[styles.focusValue, styles.targetValue]}>{getClockTarget(trainingMode, clockNumber)}</Text>
+								<Text style={styles.focusHint}>{modeDescription}</Text>
+							</>
+						)}
+					</View>
+				)}
+
+				{!sessionStarted ? (
 					<Pressable style={styles.startButton} onPress={startSession}>
-						<MaterialIcons name='play-arrow' size={32} color='#fff' />
+						<MaterialIcons name='play-arrow' size={28} color='#fff' />
 						<Text style={styles.startButtonText}>{strings.startGame}</Text>
 					</Pressable>
-				</View>
-			) : currentTarget ? (
-				<View style={styles.targetSection}>
-					<Text style={styles.targetLabel}>{strings.currentTarget}</Text>
-					<View style={styles.targetDisplay}>
-						<Text
-							style={[
-								styles.targetValue,
-								currentTarget.type === 'single' && styles.singleTarget,
-								currentTarget.type === 'double' && styles.doubleTarget,
-								currentTarget.type === 'triple' && styles.tripleTarget,
-							]}>
-							{currentTarget.display}
-						</Text>
-						<Text style={styles.targetPoints}>
-							{currentTarget.points} {strings.points}
-						</Text>
+				) : trainingMode === 'target' ? (
+					<View style={styles.primaryActions}>
+						<Pressable style={[styles.bigAction, styles.hitAction]} onPress={() => recordTargetAttempt(true)}>
+							<MaterialIcons name='check-circle' size={28} color='#fff' />
+							<Text style={styles.bigActionText}>{strings.hit}</Text>
+						</Pressable>
+						<Pressable style={[styles.bigAction, styles.missAction]} onPress={() => recordTargetAttempt(false)}>
+							<MaterialIcons name='cancel' size={28} color='#fff' />
+							<Text style={styles.bigActionText}>{strings.miss}</Text>
+						</Pressable>
 					</View>
-					<Text style={styles.targetInstruction}>{strings.hitTarget}</Text>
-				</View>
-			) : currentCheckout ? (
-				<ScrollView
-					style={styles.checkoutSection}
-					contentContainerStyle={styles.checkoutSectionContent}
-					showsVerticalScrollIndicator={false}>
-					<Text style={styles.checkoutLabel}>{strings.checkoutTarget}</Text>
-					<Text style={styles.checkoutScore}>{currentCheckout}</Text>
-					<Text style={styles.checkoutRemainingScore}>
-						{remainingScore !== null
-							? `${strings.remaining}: ${remainingScore} - ${strings.hit}: ${checkoutTargets.join(' → ')}`
-							: `${strings.targetsToHit}: ${checkoutTargets.join(' → ')}`}
-					</Text>
-
-					{/* Checkout targets display */}
-					<View style={styles.checkoutTargets}>
+				) : trainingMode === 'checkout' ? (
+					<View style={styles.checkoutActions}>
 						{checkoutTargets.map((target, index) => {
-							const isHit = checkoutProgress.some(p => p.target === target && p.hit);
-							const isMissed = checkoutProgress.some(p => p.target === target && !p.hit);
+							const attempt = checkoutProgress.find(item => item.index === index);
+							if (attempt) return null;
 
 							return (
-								<View
-									key={index}
-									style={[
-										styles.checkoutTargetChip,
-										isHit && styles.checkoutTargetHit,
-										isMissed && styles.checkoutTargetMissed,
-									]}>
-									<Text style={styles.checkoutTargetText}>{target}</Text>
-									{isHit && <MaterialIcons name='check' size={14} color='#4CAF50' />}
-									{isMissed && <MaterialIcons name='close' size={14} color='#B00020' />}
+								<View key={`${target}-${index}`} style={styles.checkoutActionRow}>
+									<Text style={styles.checkoutActionTarget}>{target}</Text>
+									<View style={styles.checkoutButtons}>
+										<Pressable style={[styles.smallAction, styles.hitAction]} onPress={() => finishCheckoutTarget(target, index, true)}>
+											<MaterialIcons name='check' size={20} color='#fff' />
+											<Text style={styles.smallActionText}>{strings.hit}</Text>
+										</Pressable>
+										<Pressable style={[styles.smallAction, styles.missAction]} onPress={() => finishCheckoutTarget(target, index, false)}>
+											<MaterialIcons name='close' size={20} color='#fff' />
+											<Text style={styles.smallActionText}>{strings.miss}</Text>
+										</Pressable>
+									</View>
 								</View>
 							);
 						})}
-					</View>
 
-					{/* Progress indicator */}
-					<View style={styles.checkoutProgress}>
-						<Text style={styles.checkoutProgressText}>
-							{checkoutProgress.filter(p => p.hit).length} / {checkoutTargets.length} {strings.targets}
-						</Text>
-					</View>
-
-					{checkoutCompleted && (
-						<View style={styles.checkoutSuccess}>
-							<MaterialIcons name='celebration' size={32} color='#4CAF50' />
-							<Text style={styles.checkoutSuccessText}>{strings.checkoutSuccess}</Text>
-						</View>
-					)}
-				</ScrollView>
-			) : null}
-
-			{/* Hit/Miss Buttons */}
-			{sessionStarted && trainingMode === 'target' && (
-				<View style={styles.actionButtons}>
-					<Pressable style={[styles.actionButton, styles.hitButton]} onPress={() => handleResult(true)}>
-						<MaterialIcons name='check-circle' size={24} color='#fff' />
-						<Text style={styles.buttonText}>{strings.hit}</Text>
-					</Pressable>
-
-					<Pressable style={[styles.actionButton, styles.missButton]} onPress={() => handleResult(false)}>
-						<MaterialIcons name='cancel' size={24} color='#fff' />
-						<Text style={styles.buttonText}>{strings.miss}</Text>
-					</Pressable>
-				</View>
-			)}
-
-			{/* Checkout Practice Buttons */}
-			{sessionStarted && trainingMode === 'checkout' && currentCheckout && checkoutTargets.length > 0 && (
-				<View style={styles.checkoutActionButtons}>
-					{checkoutTargets.map((target, index) => {
-						const isHit = checkoutProgress.some(p => p.target === target && p.hit);
-						const isMissed = checkoutProgress.some(p => p.target === target && !p.hit);
-
-						if (isHit || isMissed) return null; // Skip completed targets
-
-						return (
-							<View key={index} style={styles.checkoutTargetButton}>
-								<Text style={styles.checkoutTargetButtonText}>{target}</Text>
-								<View style={styles.checkoutTargetButtonActions}>
-									<Pressable
-										style={[styles.checkoutActionButton, styles.checkoutHitButton]}
-										onPress={() => handleCheckoutResult(target, true)}>
-										<MaterialIcons name='check-circle' size={20} color='#fff' />
-										<Text style={styles.checkoutActionButtonText}>{strings.hit}</Text>
+						{(checkoutCompleted || currentCheckoutDone) && (
+							<View style={styles.nextActions}>
+								{!checkoutCompleted && (
+									<Pressable style={[styles.secondaryButton, styles.retryButton]} onPress={retryCheckout}>
+										<MaterialIcons name='refresh' size={20} color='#121212' />
+										<Text style={styles.secondaryButtonTextDark}>{strings.retryCheckout}</Text>
 									</Pressable>
-									<Pressable
-										style={[styles.checkoutActionButton, styles.checkoutMissButton]}
-										onPress={() => handleCheckoutResult(target, false)}>
-										<MaterialIcons name='cancel' size={20} color='#fff' />
-										<Text style={styles.checkoutActionButtonText}>{strings.miss}</Text>
-									</Pressable>
-								</View>
-							</View>
-						);
-					})}
-
-					{(checkoutCompleted || allTargetsAttempted) && (
-						<View style={styles.checkoutActionButtons}>
-							{remainingScore !== null && (
-								<Pressable style={[styles.checkoutActionButton, styles.retryCheckoutButton]} onPress={retryCheckout}>
-									<MaterialIcons name='refresh' size={20} color='#fff' />
-									<Text style={styles.checkoutActionButtonText}>{strings.retryCheckout}</Text>
+								)}
+								<Pressable style={[styles.secondaryButton, styles.nextButton]} onPress={() => generateCheckout(true)}>
+									<MaterialIcons name='arrow-forward' size={20} color='#fff' />
+									<Text style={styles.secondaryButtonText}>{strings.nextCheckout}</Text>
 								</Pressable>
+							</View>
+						)}
+					</View>
+				) : trainingMode === 'clockClassic' ? (
+					<View style={styles.primaryActions}>
+						<Pressable style={[styles.bigAction, styles.hitAction]} onPress={() => recordClockAttempt(1)}>
+							<MaterialIcons name='check-circle' size={28} color='#fff' />
+							<Text style={styles.bigActionText}>{strings.hit}</Text>
+						</Pressable>
+						<Pressable style={[styles.bigAction, styles.missAction]} onPress={() => recordClockAttempt('miss')}>
+							<MaterialIcons name='cancel' size={28} color='#fff' />
+							<Text style={styles.bigActionText}>{strings.miss}</Text>
+						</Pressable>
+					</View>
+				) : trainingMode === 'clockDouble' || trainingMode === 'clockTriple' || isClockSpecialTarget(clockNumber) ? (
+					<View style={styles.primaryActions}>
+						<Pressable style={[styles.bigAction, styles.hitAction]} onPress={() => recordClockAttempt(1)}>
+							<MaterialIcons name='check-circle' size={28} color='#fff' />
+							<Text style={styles.bigActionText}>{strings.hit}</Text>
+						</Pressable>
+						<Pressable style={[styles.bigAction, styles.missAction]} onPress={() => recordClockAttempt('miss')}>
+							<MaterialIcons name='cancel' size={28} color='#fff' />
+							<Text style={styles.bigActionText}>{strings.miss}</Text>
+						</Pressable>
+					</View>
+				) : trainingMode === 'bobs27' ? (
+					<View style={styles.primaryActions}>
+						<Pressable style={[styles.bigAction, styles.hitAction]} onPress={() => recordBobsAttempt(true)}>
+							<MaterialIcons name='check-circle' size={28} color='#fff' />
+							<Text style={styles.bigActionText}>{strings.hit}</Text>
+						</Pressable>
+						<Pressable style={[styles.bigAction, styles.missAction]} onPress={() => recordBobsAttempt(false)}>
+							<MaterialIcons name='cancel' size={28} color='#fff' />
+							<Text style={styles.bigActionText}>{strings.miss}</Text>
+						</Pressable>
+					</View>
+				) : (
+					<View style={styles.clockActions}>
+						<Pressable style={[styles.smallAction, styles.hitAction]} onPress={() => recordClockAttempt(1)}>
+							<Text style={styles.smallActionText}>S</Text>
+						</Pressable>
+						<Pressable style={[styles.smallAction, styles.hitAction]} onPress={() => recordClockAttempt(2)}>
+							<Text style={styles.smallActionText}>D</Text>
+						</Pressable>
+						<Pressable style={[styles.smallAction, styles.hitAction]} onPress={() => recordClockAttempt(3)}>
+							<Text style={styles.smallActionText}>T</Text>
+						</Pressable>
+						<Pressable style={[styles.smallAction, styles.missAction]} onPress={() => recordClockAttempt('miss')}>
+							<Text style={styles.smallActionText}>{strings.miss}</Text>
+						</Pressable>
+					</View>
+				)}
+
+				{sessionStarted && (
+					<>
+						<View style={styles.statsGrid}>
+							<StatTile icon='gps-fixed' label={strings.targets} value={activeStats.total} color='#8AB4F8' />
+							<StatTile icon='check-circle' label={strings.hits} value={activeStats.hits} color='#48B66C' />
+							<StatTile icon='cancel' label={strings.misses} value={activeStats.misses} color='#D94A5A' />
+							<StatTile icon='percent' label={strings.successRate} value={`${activeStats.successRate}%`} color='#F2C94C' />
+						</View>
+
+						<View style={styles.historyPanel}>
+							<View style={styles.historyHeader}>
+								<MaterialIcons name='history' size={18} color='#E7EEF7' />
+								<Text style={styles.historyTitle}>{strings.targetsPracticed}</Text>
+							</View>
+							{recentAttempts.length === 0 ? (
+								<Text style={styles.emptyHistory}>{strings.hitTarget}</Text>
+							) : (
+								<View style={styles.historyChips}>
+									{recentAttempts.map((attempt, index) => (
+										<View key={`${attempt.target}-${index}`} style={[styles.historyChip, attempt.hit ? styles.historyHit : styles.historyMiss]}>
+											<Text style={styles.historyChipText}>{attempt.target}</Text>
+											<MaterialIcons name={attempt.hit ? 'check' : 'close'} size={14} color='#fff' />
+										</View>
+									))}
+								</View>
 							)}
-							<Pressable style={[styles.checkoutActionButton, styles.nextCheckoutButton]} onPress={generateCheckout}>
-								<MaterialIcons name='arrow-forward' size={20} color='#fff' />
-								<Text style={styles.checkoutActionButtonText}>{strings.nextCheckout}</Text>
+						</View>
+
+						<View style={styles.footerActions}>
+							<Pressable style={[styles.footerButton, !canSaveSession && styles.footerButtonDisabled]} onPress={saveSession} disabled={!canSaveSession}>
+								<MaterialIcons name='save' size={20} color='#48B66C' />
+								<Text style={styles.footerButtonText}>{strings.saveSession}</Text>
+							</Pressable>
+							<Pressable style={styles.footerButton} onPress={resetSession}>
+								<MaterialIcons name='restart-alt' size={20} color='#D94A5A' />
+								<Text style={styles.footerButtonText}>{strings.resetSession}</Text>
 							</Pressable>
 						</View>
-					)}
-				</View>
-			)}
+					</>
+				)}
+			</ScrollView>
 
-			{/* Session Statistics */}
-			{sessionStarted && (
-				<View style={styles.statsSection}>
-					<Text style={[styles.statsTitle, trainingMode === 'checkout' && styles.checkoutStatsTitle]}>
-						{trainingMode === 'checkout' ? strings.checkoutStats : strings.sessionStats}
-					</Text>
-					{trainingMode === 'target' ? (
-						<View style={styles.statsGrid}>
-							<View style={styles.statItem}>
-								<Text style={styles.statValue}>{sessionStats.targets}</Text>
-								<Text style={styles.statLabel}>{strings.targets}</Text>
-							</View>
-							<View style={styles.statItem}>
-								<Text style={styles.statValue}>{sessionStats.hits}</Text>
-								<Text style={styles.statLabel}>{strings.hits}</Text>
-							</View>
-							<View style={styles.statItem}>
-								<Text style={styles.statValue}>{sessionStats.misses}</Text>
-								<Text style={styles.statLabel}>{strings.misses}</Text>
-							</View>
-							<View style={styles.statItem}>
-								<Text style={styles.statValue}>{successRate}%</Text>
-								<Text style={styles.statLabel}>{strings.successRate}</Text>
-							</View>
-						</View>
-					) : (
-						<View style={styles.checkoutStatsGrid}>
-							<View style={styles.checkoutStatItem}>
-								<Text style={styles.checkoutStatValue}>{checkoutStats.totalCheckouts}</Text>
-								<Text style={styles.checkoutStatLabel}>{strings.checkoutAttempts}</Text>
-							</View>
-							<View style={styles.checkoutStatItem}>
-								<Text style={styles.checkoutStatValue}>{checkoutStats.completedCheckouts}</Text>
-								<Text style={styles.checkoutStatLabel}>{strings.checkoutComplete}</Text>
-							</View>
-							<View style={styles.checkoutStatItem}>
-								<Text style={styles.checkoutStatValue}>
-									{checkoutStats.totalTargets > 0
-										? Math.round((checkoutStats.hitTargets / checkoutStats.totalTargets) * 100)
-										: 0}
-									%
-								</Text>
-								<Text style={styles.checkoutStatLabel}>{strings.successRate}</Text>
-							</View>
-						</View>
-					)}
-					<Text style={styles.durationText}>
-						{strings.duration}: {Math.floor(sessionDuration / 60)}:{String(sessionDuration % 60).padStart(2, '0')}
-					</Text>
-				</View>
-			)}
-
-			{/* Control Buttons */}
-			{sessionStarted && (
-				<View style={styles.controlButtons}>
-					{trainingMode === 'target' ? (
-						<Pressable style={styles.controlButton} onPress={generateTarget}>
-							<MaterialIcons name='refresh' size={20} color='#8AB4F8' />
-							<Text style={styles.controlButtonText}>{strings.newTarget}</Text>
-						</Pressable>
-					) : (
-						<Pressable style={styles.controlButton} onPress={generateCheckout}>
-							<MaterialIcons name='refresh' size={20} color='#8AB4F8' />
-							<Text style={styles.controlButtonText}>{strings.nextCheckout}</Text>
-						</Pressable>
-					)}
-
-					<Pressable
-						style={styles.controlButton}
-						onPress={saveSession}
-						disabled={
-							(trainingMode === 'target' && sessionStats.targets === 0) ||
-							(trainingMode === 'checkout' && checkoutStats.totalCheckouts === 0)
-						}>
-						<MaterialIcons name='save' size={20} color='#4CAF50' />
-						<Text style={styles.controlButtonText}>{strings.saveSession}</Text>
-					</Pressable>
-
-					<Pressable style={styles.controlButton} onPress={resetSession}>
-						<MaterialIcons name='restart-alt' size={20} color='#B00020' />
-						<Text style={styles.controlButtonText}>{strings.resetSession}</Text>
-					</Pressable>
-				</View>
-			)}
-
-			{/* Training sessions are now visible in the Statistics tab */}
-
-			{/* Custom Modal */}
 			<Modal visible={showModal} transparent={true} animationType='fade' onRequestClose={() => setShowModal(false)}>
 				<View style={styles.modalOverlay}>
 					<View style={styles.modalContent}>
@@ -751,27 +875,66 @@ export default function TrainingScreen() {
 						<View style={styles.modalButtons}>
 							{modalConfig?.buttons.map((button, index) => (
 								<Pressable
-									key={index}
+									key={`${button.text}-${index}`}
 									style={[
 										styles.modalButton,
-										button.style === 'destructive' && styles.modalButtonDestructive,
 										button.style === 'cancel' && styles.modalButtonCancel,
+										button.style === 'destructive' && styles.modalButtonDestructive,
 									]}
 									onPress={button.onPress}>
-									<Text
-										style={[
-											styles.modalButtonText,
-											button.style === 'destructive' && styles.modalButtonTextDestructive,
-											button.style === 'cancel' && styles.modalButtonTextCancel,
-										]}>
-										{button.text}
-									</Text>
+									<Text style={styles.modalButtonText}>{button.text}</Text>
 								</Pressable>
 							))}
 						</View>
 					</View>
 				</View>
 			</Modal>
+		</SafeAreaView>
+	);
+}
+
+function ModeCard({
+	active,
+	color,
+	icon,
+	title,
+	description,
+	onPress,
+}: {
+	active: boolean;
+	color: string;
+	icon: keyof typeof MaterialIcons.glyphMap;
+	title: string;
+	description: string;
+	onPress: () => void;
+}) {
+	return (
+		<Pressable style={[styles.modeCard, active && { borderColor: color }]} onPress={onPress}>
+			<View style={[styles.modeIcon, { backgroundColor: color }]}>
+				<MaterialIcons name={icon} size={24} color='#121212' />
+			</View>
+			<Text style={styles.modeTitle}>{title}</Text>
+			<Text style={styles.modeDescription}>{description}</Text>
+		</Pressable>
+	);
+}
+
+function StatTile({
+	icon,
+	label,
+	value,
+	color,
+}: {
+	icon: keyof typeof MaterialIcons.glyphMap;
+	label: string;
+	value: string | number;
+	color: string;
+}) {
+	return (
+		<View style={styles.statTile}>
+			<MaterialIcons name={icon} size={18} color={color} />
+			<Text style={styles.statValue}>{value}</Text>
+			<Text style={styles.statLabel}>{label}</Text>
 		</View>
 	);
 }
@@ -779,475 +942,444 @@ export default function TrainingScreen() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: '#121212',
-		padding: 20,
+		backgroundColor: '#101113',
 	},
-
-	modeSelector: {
-		backgroundColor: '#1A1A1A',
-		borderRadius: 16,
-		padding: 20,
-		marginBottom: 20,
-		borderWidth: 1,
-		borderColor: '#333',
+	content: {
+		padding: 14,
+		paddingTop: 8,
+		paddingBottom: 40,
+		gap: 16,
 	},
-	modeSelectorTitle: {
-		fontSize: 18,
-		fontWeight: 'bold',
-		color: '#8AB4F8',
-		textAlign: 'center',
-		marginBottom: 16,
-	},
-	modeButtons: {
+	header: {
 		flexDirection: 'row',
+		alignItems: 'flex-start',
 		justifyContent: 'space-between',
+		gap: 10,
+		width: '100%',
+	},
+	headerTitleBlock: {
+		flex: 1,
+		minWidth: 0,
+	},
+	eyebrow: {
+		color: '#8B949E',
+		fontSize: 12,
+		fontWeight: '700',
+		textTransform: 'uppercase',
+	},
+	title: {
+		color: '#F4F7FA',
+		fontSize: 22,
+		lineHeight: 28,
+		fontWeight: '800',
+		marginTop: 2,
+		flexShrink: 1,
+	},
+	timerPill: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 6,
+		backgroundColor: '#1B1F24',
+		borderRadius: 8,
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderWidth: 1,
+		borderColor: '#2A3037',
+		flexShrink: 0,
+	},
+	headerActions: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+		flexShrink: 0,
+	},
+	exitButton: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 4,
+		backgroundColor: '#2A3037',
+		borderRadius: 8,
+		paddingHorizontal: 10,
+		paddingVertical: 8,
+		borderWidth: 1,
+		borderColor: '#3A4048',
+	},
+	exitButtonText: {
+		color: '#E7EEF7',
+		fontSize: 12,
+		fontWeight: '800',
+	},
+	timerText: {
+		color: '#E7EEF7',
+		fontSize: 14,
+		fontWeight: '700',
+	},
+	modeGrid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
 		gap: 12,
 	},
-	modeButton: {
-		flex: 1,
-		backgroundColor: '#333',
-		paddingVertical: 12,
-		paddingHorizontal: 16,
+	modeCard: {
+		width: '48%',
+		backgroundColor: '#181B20',
 		borderRadius: 8,
 		borderWidth: 1,
-		borderColor: '#555',
+		borderColor: '#2A3037',
+		padding: 14,
+		minHeight: 142,
+	},
+	modeIcon: {
+		width: 40,
+		height: 40,
+		borderRadius: 8,
 		alignItems: 'center',
-	},
-	modeButtonActive: {
-		backgroundColor: '#8AB4F8',
-		borderColor: '#8AB4F8',
-	},
-	modeButtonText: {
-		color: '#ccc',
-		fontSize: 14,
-		fontWeight: '500',
-	},
-	modeButtonTextActive: {
-		color: '#fff',
-		fontWeight: 'bold',
-	},
-
-	checkoutSection: {
-		backgroundColor: '#1A1A1A',
-		borderRadius: 16,
-		marginBottom: 20,
-		borderWidth: 2,
-		borderColor: '#FF6B35', // Orange color to differentiate from target training
-		maxHeight: 400, // Limit height to make it scrollable
-	},
-	checkoutSectionContent: {
-		padding: 20,
-		alignItems: 'center',
-		minHeight: 300, // Ensure minimum height for content
-	},
-	checkoutLabel: {
-		fontSize: 18,
-		color: '#ccc',
-		marginBottom: 8,
-	},
-	checkoutScore: {
-		fontSize: 42,
-		fontWeight: 'bold',
-		color: '#FF6B35', // Orange color to differentiate
+		justifyContent: 'center',
 		marginBottom: 12,
 	},
-	checkoutRemainingScore: {
+	modeTitle: {
+		color: '#F4F7FA',
+		fontSize: 15,
+		fontWeight: '800',
+	},
+	modeDescription: {
+		color: '#9AA4AF',
+		fontSize: 12,
+		lineHeight: 16,
+		marginTop: 6,
+	},
+	focusPanel: {
+		backgroundColor: '#181B20',
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#2A3037',
+		padding: 18,
+		alignItems: 'center',
+	},
+	checkoutPanel: {
+		borderColor: '#244B50',
+	},
+	focusTopRow: {
+		width: '100%',
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	focusLabel: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 6,
+	},
+	focusLabelText: {
+		color: '#C8D0D9',
 		fontSize: 14,
-		color: '#FF6B35',
-		marginBottom: 12,
+		fontWeight: '700',
+	},
+	focusMeta: {
+		color: '#F2C94C',
+		fontSize: 14,
+		fontWeight: '800',
+	},
+	focusValue: {
+		fontSize: 82,
+		fontWeight: '900',
+		marginTop: 8,
+	},
+	targetValue: {
+		color: '#8AB4F8',
+	},
+	checkoutValue: {
+		color: '#5BD3C7',
+	},
+	focusHint: {
+		color: '#9AA4AF',
+		fontSize: 14,
 		fontWeight: '600',
 		textAlign: 'center',
-		lineHeight: 18,
+		marginTop: 4,
 	},
-	checkoutInstructions: {
-		fontSize: 14,
-		color: '#ccc',
-		textAlign: 'center',
-		marginBottom: 16,
-	},
-
-	checkoutTargets: {
+	checkoutPath: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
 		justifyContent: 'center',
-		gap: 6,
-		marginBottom: 12,
-		maxWidth: '100%',
-	},
-	checkoutTargetChip: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		backgroundColor: '#333',
-		paddingVertical: 4,
-		paddingHorizontal: 8,
-		borderRadius: 12,
-		borderWidth: 1,
-		borderColor: '#555',
-		gap: 4,
-		marginBottom: 4,
-	},
-	checkoutTargetHit: {
-		backgroundColor: '#4CAF50',
-		borderColor: '#4CAF50',
-	},
-	checkoutTargetMissed: {
-		backgroundColor: '#B00020',
-		borderColor: '#B00020',
-	},
-	checkoutTargetText: {
-		color: '#fff',
-		fontSize: 12,
-		fontWeight: '500',
-	},
-	checkoutSuccess: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		backgroundColor: '#FF6B35', // Orange to match checkout theme
-		paddingVertical: 12,
-		paddingHorizontal: 20,
-		borderRadius: 25,
-		gap: 12,
-	},
-	checkoutSuccessText: {
-		color: '#fff',
-		fontSize: 18,
-		fontWeight: 'bold',
-	},
-
-	checkoutProgress: {
-		marginTop: 8,
-		alignItems: 'center',
-	},
-	checkoutProgressText: {
-		color: '#ccc',
-		fontSize: 14,
-		fontWeight: '500',
-	},
-
-	checkoutActionButtons: {
-		marginBottom: 16,
-		gap: 12,
-	},
-	checkoutTargetButton: {
-		backgroundColor: '#1A1A1A',
-		borderRadius: 10,
-		padding: 12,
-		borderWidth: 1,
-		borderColor: '#333',
-		alignItems: 'center',
-	},
-	checkoutTargetButtonText: {
-		color: '#FF6B35', // Orange to match checkout theme
-		fontSize: 16,
-		fontWeight: 'bold',
+		gap: 8,
+		marginTop: 4,
 		marginBottom: 8,
 	},
-	checkoutTargetButtonActions: {
-		flexDirection: 'row',
-		gap: 8,
-	},
-	checkoutActionButton: {
+	pathChip: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingVertical: 8,
-		paddingHorizontal: 16,
+		gap: 4,
+		backgroundColor: '#252A31',
 		borderRadius: 8,
-		gap: 8,
+		paddingHorizontal: 10,
+		paddingVertical: 6,
 	},
-	checkoutHitButton: {
-		backgroundColor: '#4CAF50',
+	pathChipHit: {
+		backgroundColor: '#48B66C',
 	},
-	checkoutMissButton: {
-		backgroundColor: '#B00020',
+	pathChipMiss: {
+		backgroundColor: '#D94A5A',
 	},
-	nextCheckoutButton: {
-		backgroundColor: '#FF6B35', // Orange to match checkout theme
-	},
-	retryCheckoutButton: {
-		backgroundColor: '#8AB4F8', // Blue to differentiate from next checkout
-	},
-	checkoutActionButtonText: {
+	pathChipText: {
 		color: '#fff',
-		fontSize: 14,
-		fontWeight: '500',
-	},
-
-	startSection: {
-		backgroundColor: '#1A1A1A',
-		borderRadius: 16,
-		padding: 24,
-		alignItems: 'center',
-		marginBottom: 20,
-		borderWidth: 2,
-		borderColor: '#8AB4F8',
-	},
-	startTitle: {
-		fontSize: 20,
-		fontWeight: 'bold',
-		color: '#8AB4F8',
-		marginBottom: 12,
-		textAlign: 'center',
-	},
-	startSubtitle: {
-		fontSize: 14,
-		color: '#ccc',
-		textAlign: 'center',
-		marginBottom: 20,
+		fontSize: 13,
+		fontWeight: '800',
 	},
 	startButton: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: '#4CAF50',
-		paddingVertical: 14,
-		paddingHorizontal: 24,
-		borderRadius: 12,
-		minWidth: 180,
 		justifyContent: 'center',
+		gap: 8,
+		backgroundColor: '#48B66C',
+		borderRadius: 8,
+		paddingVertical: 16,
 	},
 	startButtonText: {
 		color: '#fff',
-		fontSize: 16,
-		fontWeight: '600',
-		marginLeft: 10,
+		fontSize: 17,
+		fontWeight: '800',
 	},
-
-	targetSection: {
-		backgroundColor: '#1A1A1A',
-		borderRadius: 16,
-		padding: 20,
-		alignItems: 'center',
-		marginBottom: 20,
-		borderWidth: 2,
-		borderColor: '#8AB4F8',
-	},
-	targetLabel: {
-		fontSize: 16,
-		color: '#ccc',
-		marginBottom: 16,
-	},
-	targetDisplay: {
-		alignItems: 'center',
-		marginBottom: 16,
-	},
-	targetValue: {
-		fontSize: 40,
-		fontWeight: 'bold',
-		color: '#8AB4F8',
-		marginBottom: 6,
-	},
-	singleTarget: {
-		color: '#8AB4F8', // Blue for single targets (previous color)
-	},
-	doubleTarget: {
-		color: '#8AB4F8', // Blue for double targets (previous color)
-	},
-	tripleTarget: {
-		color: '#8AB4F8', // Blue for triple targets (previous color)
-	},
-	targetPoints: {
-		fontSize: 16,
-		color: '#8AB4F8',
-		fontWeight: '600',
-	},
-	targetInstruction: {
-		fontSize: 16,
-		color: '#fff',
-		fontWeight: '600',
-	},
-	actionButtons: {
+	primaryActions: {
 		flexDirection: 'row',
-		justifyContent: 'space-around',
-		marginBottom: 20,
+		gap: 12,
 	},
-	actionButton: {
+	bigAction: {
+		flex: 1,
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingVertical: 12,
-		paddingHorizontal: 20,
-		borderRadius: 10,
-		minWidth: 100,
 		justifyContent: 'center',
+		gap: 8,
+		borderRadius: 8,
+		paddingVertical: 18,
 	},
-	hitButton: {
-		backgroundColor: '#4CAF50',
-	},
-	missButton: {
-		backgroundColor: '#B00020',
-	},
-	buttonText: {
+	bigActionText: {
 		color: '#fff',
-		fontSize: 16,
-		fontWeight: '600',
-		marginLeft: 6,
+		fontSize: 17,
+		fontWeight: '800',
 	},
-	statsSection: {
-		backgroundColor: '#1A1A1A',
-		borderRadius: 16,
-		padding: 16,
-		marginBottom: 20,
+	hitAction: {
+		backgroundColor: '#48B66C',
 	},
-	statsTitle: {
-		fontSize: 20,
-		fontWeight: 'bold',
-		color: '#8AB4F8',
+	missAction: {
+		backgroundColor: '#D94A5A',
+	},
+	checkoutActions: {
+		gap: 10,
+	},
+	checkoutActionRow: {
+		backgroundColor: '#181B20',
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#2A3037',
+		padding: 12,
+		gap: 10,
+	},
+	checkoutActionTarget: {
+		color: '#9BE7DF',
+		fontSize: 18,
+		fontWeight: '900',
 		textAlign: 'center',
-		marginBottom: 16,
+	},
+	checkoutButtons: {
+		flexDirection: 'row',
+		gap: 10,
+	},
+	clockActions: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 10,
+	},
+	smallAction: {
+		flex: 1,
+		minWidth: '45%',
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 6,
+		borderRadius: 8,
+		paddingVertical: 12,
+	},
+	smallActionText: {
+		color: '#fff',
+		fontSize: 14,
+		fontWeight: '800',
+	},
+	nextActions: {
+		flexDirection: 'row',
+		gap: 10,
+	},
+	secondaryButton: {
+		flex: 1,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 6,
+		borderRadius: 8,
+		paddingVertical: 13,
+	},
+	retryButton: {
+		backgroundColor: '#F2C94C',
+	},
+	nextButton: {
+		backgroundColor: '#2FA7A0',
+	},
+	secondaryButtonText: {
+		color: '#fff',
+		fontSize: 14,
+		fontWeight: '800',
+	},
+	secondaryButtonTextDark: {
+		color: '#121212',
+		fontSize: 14,
+		fontWeight: '800',
 	},
 	statsGrid: {
 		flexDirection: 'row',
-		justifyContent: 'space-around',
-		marginBottom: 16,
-	},
-	statItem: {
-		alignItems: 'center',
-	},
-	statValue: {
-		fontSize: 24,
-		fontWeight: 'bold',
-		color: '#fff',
-		marginBottom: 4,
-	},
-	statLabel: {
-		fontSize: 14,
-		color: '#ccc',
-	},
-
-	// Checkout-specific stats styles
-	checkoutStatsGrid: {
-		flexDirection: 'row',
-		justifyContent: 'space-around',
-		marginBottom: 16,
-	},
-	checkoutStatItem: {
-		alignItems: 'center',
-	},
-	checkoutStatValue: {
-		fontSize: 20,
-		fontWeight: 'bold',
-		color: '#FF6B35', // Orange to match checkout theme
-		marginBottom: 3,
-	},
-	checkoutStatLabel: {
-		fontSize: 12,
-		color: '#ccc',
-		fontWeight: '500',
-	},
-
-	checkoutStatsTitle: {
-		fontSize: 18,
-		color: '#FF6B35', // Orange to match checkout theme
-	},
-	durationText: {
-		textAlign: 'center',
-		color: '#ccc',
-		fontSize: 18,
-	},
-	controlButtons: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
 		gap: 8,
-		paddingHorizontal: 10,
 	},
-	controlButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingVertical: 10,
-		paddingHorizontal: 16,
+	statTile: {
+		flex: 1,
+		backgroundColor: '#181B20',
 		borderRadius: 8,
 		borderWidth: 1,
-		borderColor: '#444',
-		backgroundColor: 'transparent',
-		flex: 1,
-		justifyContent: 'center',
+		borderColor: '#2A3037',
+		paddingVertical: 12,
+		alignItems: 'center',
+		gap: 3,
+		minHeight: 86,
 	},
-	controlButtonText: {
-		color: '#8AB4F8',
+	statValue: {
+		color: '#F4F7FA',
+		fontSize: 19,
+		fontWeight: '900',
+	},
+	statLabel: {
+		color: '#9AA4AF',
+		fontSize: 11,
+		fontWeight: '700',
+		textAlign: 'center',
+	},
+	historyPanel: {
+		backgroundColor: '#181B20',
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#2A3037',
+		padding: 14,
+		gap: 12,
+	},
+	historyHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	historyTitle: {
+		color: '#E7EEF7',
+		fontSize: 15,
+		fontWeight: '800',
+	},
+	emptyHistory: {
+		color: '#8B949E',
+		fontSize: 13,
+	},
+	historyChips: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: 8,
+	},
+	historyChip: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 4,
+		borderRadius: 8,
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+	},
+	historyHit: {
+		backgroundColor: '#2F7E49',
+	},
+	historyMiss: {
+		backgroundColor: '#963442',
+	},
+	historyChipText: {
+		color: '#fff',
 		fontSize: 12,
-		fontWeight: '600',
-		marginLeft: 6,
+		fontWeight: '800',
 	},
-	resetText: {
-		color: '#B00020',
+	footerActions: {
+		flexDirection: 'row',
+		gap: 10,
 	},
-	saveButton: {
-		borderColor: '#4CAF50',
+	footerButton: {
+		flex: 1,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 6,
+		backgroundColor: '#181B20',
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#2A3037',
+		paddingVertical: 14,
 	},
-	saveText: {
-		color: '#4CAF50',
+	footerButtonDisabled: {
+		opacity: 0.45,
 	},
-
-	// Modal styles
+	footerButtonText: {
+		color: '#E7EEF7',
+		fontSize: 13,
+		fontWeight: '800',
+	},
 	modalOverlay: {
 		flex: 1,
-		backgroundColor: 'rgba(0, 0, 0, 0.7)',
+		backgroundColor: 'rgba(0, 0, 0, 0.72)',
 		justifyContent: 'center',
 		alignItems: 'center',
 		padding: 20,
 	},
 	modalContent: {
-		backgroundColor: '#1A1A1A',
-		borderRadius: 16,
-		padding: 20,
 		width: '100%',
 		maxWidth: 380,
+		backgroundColor: '#181B20',
+		borderRadius: 8,
 		borderWidth: 1,
-		borderColor: '#333',
+		borderColor: '#2A3037',
+		padding: 20,
 	},
 	modalTitle: {
-		fontSize: 18,
-		fontWeight: 'bold',
-		color: '#fff',
+		color: '#F4F7FA',
+		fontSize: 19,
+		fontWeight: '900',
 		textAlign: 'center',
-		marginBottom: 12,
+		marginBottom: 10,
 	},
 	modalMessage: {
-		fontSize: 12,
-		color: '#ccc',
+		color: '#B8C0CA',
+		fontSize: 14,
+		lineHeight: 20,
 		textAlign: 'center',
-		marginBottom: 20,
-		lineHeight: 18,
-		paddingHorizontal: 15,
+		marginBottom: 18,
 	},
 	modalButtons: {
 		flexDirection: 'row',
-		justifyContent: 'space-between',
-		gap: 16,
+		gap: 10,
 	},
 	modalButton: {
 		flex: 1,
-		paddingVertical: 14,
-		paddingHorizontal: 20,
-		borderRadius: 8,
 		backgroundColor: '#8AB4F8',
+		borderRadius: 8,
+		paddingVertical: 13,
 		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	modalButtonDestructive: {
-		backgroundColor: '#B00020',
 	},
 	modalButtonCancel: {
-		backgroundColor: '#666',
+		backgroundColor: '#3A4048',
+	},
+	modalButtonDestructive: {
+		backgroundColor: '#D94A5A',
 	},
 	modalButtonText: {
 		color: '#fff',
 		fontSize: 13,
-		fontWeight: '600',
+		fontWeight: '800',
 		textAlign: 'center',
-		flexShrink: 1,
 	},
-	modalButtonTextDestructive: {
-		color: '#fff',
-		fontSize: 13,
-		fontWeight: '600',
-		textAlign: 'center',
-		flexShrink: 1,
-	},
-	modalButtonTextCancel: {
-		color: '#fff',
-		fontSize: 13,
-		fontWeight: '600',
-		textAlign: 'center',
-		flexShrink: 1,
-	},
-	// Debug styles removed - training sessions now appear in Statistics tab
 });

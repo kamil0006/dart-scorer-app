@@ -19,6 +19,7 @@ const rTripleInner = R * 0.45;
 const rTripleOuter = R * 0.55;
 const rDoubleInner = R * 0.85;
 const rDoubleOuter = R * 0.95;
+const NUMBERS = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 
 function segmentPath(i: number, innerR: number, outerR: number): string {
 	const start = i * ANG - Math.PI / 2 + OFFSET;
@@ -44,7 +45,7 @@ export default function DartboardPicker({ onSelect }: PickerProps) {
 						key={`s-in-${i}`}
 						d={segmentPath(i, rOuterBull, rTripleInner)}
 						fill='transparent'
-						onPress={() => onSelect(i + 1, 1)}
+						onPress={() => onSelect(NUMBERS[i], 1)}
 					/>
 				))}
 				{/* triple ring */}
@@ -53,7 +54,7 @@ export default function DartboardPicker({ onSelect }: PickerProps) {
 						key={`tri-${i}`}
 						d={segmentPath(i, rTripleInner, rTripleOuter)}
 						fill='transparent'
-						onPress={() => onSelect(i + 1, 3)}
+						onPress={() => onSelect(NUMBERS[i], 3)}
 					/>
 				))}
 				{/* outer single */}
@@ -62,7 +63,7 @@ export default function DartboardPicker({ onSelect }: PickerProps) {
 						key={`s-out-${i}`}
 						d={segmentPath(i, rTripleOuter, rDoubleInner)}
 						fill='transparent'
-						onPress={() => onSelect(i + 1, 1)}
+						onPress={() => onSelect(NUMBERS[i], 1)}
 					/>
 				))}
 				{/* double ring */}
@@ -71,7 +72,7 @@ export default function DartboardPicker({ onSelect }: PickerProps) {
 						key={`dbl-${i}`}
 						d={segmentPath(i, rDoubleInner, rDoubleOuter)}
 						fill='transparent'
-						onPress={() => onSelect(i + 1, 2)}
+						onPress={() => onSelect(NUMBERS[i], 2)}
 					/>
 				))}
 				{/* outer bull (25) */}

@@ -1,21 +1,93 @@
 import { db } from '../lib/db';
+import {
+	addTurnToScoreRanges,
+	calculateAvg3,
+	calculateCheckoutStats,
+	calculateCheckoutValue,
+	createEmptyScoreRanges,
+	createEmptyCheckoutStats,
+	isAdvancedGame,
+	isForfeitedGame,
+	parseTurns,
+} from '../lib/dartsStats';
+import { GameRow } from '../lib/db';
+
+export type GameMode = 'simple' | 'advanced';
+
+export type GameVariantStats = {
+	'301': number;
+	'401': number;
+	'501': number;
+};
+
+export type ModeSummary = {
+	games: number;
+	totalDarts: number;
+	totalScore: number;
+	bestAvg: number;
+	avg3: number;
+};
+
+export type RecentTrendGame = {
+	avg: number;
+	variant: number;
+	mode: GameMode;
+	completed: boolean;
+};
+
+export type ComprehensiveStats = {
+	totalGames: number;
+	gameVariants: GameVariantStats;
+	modeStats: Record<GameMode, number>;
+	modePerformance: Record<GameMode, ModeSummary>;
+	performance: {
+		bestAvg: number;
+		overallAvg: number;
+		totalDarts: number;
+		totalScore: number;
+	};
+	completion: {
+		completed: number;
+		forfeited: number;
+		successRate: number;
+	};
+	achievements: {
+		highestFinish: number;
+		count180s: number;
+		bestCheckout: number;
+	};
+	checkoutStats: ReturnType<typeof createEmptyCheckoutStats>;
+	scoreRanges: ReturnType<typeof createEmptyScoreRanges>;
+	recentTrends: {
+		last5Games: RecentTrendGame[];
+		last10Games: RecentTrendGame[];
+	};
+	gameLength: {
+		shortest: number;
+		longest: number;
+		average: number;
+	};
+};
 
 export function deleteStatById(id: number) {
 	db.runSync('DELETE FROM games WHERE id = ?;', id);
 }
 
 // Enhanced statistics for both modes
-export function getComprehensiveStats() {
-	const games = db.getAllSync('SELECT * FROM games ORDER BY id DESC;') as any[];
-
+export function calculateComprehensiveStats(games: GameRow[]): ComprehensiveStats {
 	if (games.length === 0) {
 		return {
 			totalGames: 0,
 			gameVariants: { '301': 0, '401': 0, '501': 0 },
 			modeStats: { simple: 0, advanced: 0 },
+			modePerformance: {
+				simple: { games: 0, totalDarts: 0, totalScore: 0, bestAvg: 0, avg3: 0 },
+				advanced: { games: 0, totalDarts: 0, totalScore: 0, bestAvg: 0, avg3: 0 },
+			},
 			performance: { bestAvg: 0, overallAvg: 0, totalDarts: 0, totalScore: 0 },
 			completion: { completed: 0, forfeited: 0, successRate: 0 },
 			achievements: { highestFinish: 0, count180s: 0, bestCheckout: 0 },
+			checkoutStats: createEmptyCheckoutStats(),
 			scoreRanges: { '100+': 0, '120+': 0, '140+': 0, '160+': 0, '180': 0 },
 			recentTrends: { last5Games: [], last10Games: [] },
 			gameLength: { shortest: 0, longest: 0, average: 0 },
@@ -29,11 +101,11 @@ export function getComprehensiveStats() {
 	const g301 = games.filter(g => g.start === 301).length;
 
 	// Mode detection and counting
-	const modeStats = { simple: 0, advanced: 0 };
+	const modeStats: Record<GameMode, number> = { simple: 0, advanced: 0 };
 	const modePerformance = {
 		simple: { games: 0, totalDarts: 0, totalScore: 0, bestAvg: 0, avg3: 0 },
 		advanced: { games: 0, totalDarts: 0, totalScore: 0, bestAvg: 0, avg3: 0 },
-	};
+	} satisfies Record<GameMode, ModeSummary>;
 
 	// Performance tracking
 	let bestAvg = 0;
@@ -44,7 +116,7 @@ export function getComprehensiveStats() {
 	let bestCheckout = 0;
 
 	// Score ranges
-	const scoreRanges = { '100+': 0, '120+': 0, '140+': 0, '160+': 0, '180': 0 };
+	const scoreRanges = createEmptyScoreRanges();
 
 	// Game completion
 	let completed: number = 0;
@@ -54,8 +126,8 @@ export function getComprehensiveStats() {
 	const gameLengths: number[] = [];
 
 	games.forEach(game => {
-		const turns = JSON.parse(game.turns);
-		const isAdvanced = game.hits && game.hits !== '[]' && game.hits !== 'null';
+		const turns = parseTurns(game.turns);
+		const isAdvanced = isAdvancedGame(game);
 		const gameLength = turns.length;
 
 		// Mode counting
@@ -83,26 +155,20 @@ export function getComprehensiveStats() {
 		totalScore += game.scored;
 
 		// Score ranges
-		turns.forEach((turn: number) => {
-			if (turn >= 100) scoreRanges['100+']++;
-			if (turn >= 120) scoreRanges['120+']++;
-			if (turn >= 140) scoreRanges['140+']++;
-			if (turn >= 160) scoreRanges['160+']++;
-			if (turn === 180) scoreRanges['180']++;
-		});
+		turns.forEach(turn => addTurnToScoreRanges(scoreRanges, turn));
 
 		// 180s counting
 		count180s += turns.filter((turn: number) => turn === 180).length;
 
 		// Game completion
-		if (game.forfeited === 1 || game.forfeited === true) {
+		if (isForfeitedGame(game)) {
 			forfeited++;
 		} else {
 			completed++;
 		}
 
 		// Checkout tracking - only count completed games
-		if (game.checkout && game.checkout !== 'null' && !(game.forfeited === 1 || game.forfeited === true)) {
+		if (game.checkout && game.checkout !== 'null' && !isForfeitedGame(game)) {
 			const checkoutValue = calculateCheckoutValue(game.checkout);
 			if (checkoutValue > highestFinish) highestFinish = checkoutValue;
 			if (checkoutValue > bestCheckout) bestCheckout = checkoutValue;
@@ -113,29 +179,32 @@ export function getComprehensiveStats() {
 	});
 
 	// Calculate averages
-	const overallAvg = totalGames > 0 ? (totalScore / totalDarts) * 3 : 0;
+	const overallAvg = calculateAvg3(totalScore, totalDarts);
 
 	// Calculate mode averages
-	if (modePerformance.simple.games > 0) {
-		modePerformance.simple.avg3 = (modePerformance.simple.totalScore / modePerformance.simple.totalDarts) * 3;
+	if (modePerformance.simple.totalDarts > 0) {
+		modePerformance.simple.avg3 = calculateAvg3(modePerformance.simple.totalScore, modePerformance.simple.totalDarts);
 	}
-	if (modePerformance.advanced.games > 0) {
-		modePerformance.advanced.avg3 = (modePerformance.advanced.totalScore / modePerformance.advanced.totalDarts) * 3;
+	if (modePerformance.advanced.totalDarts > 0) {
+		modePerformance.advanced.avg3 = calculateAvg3(
+			modePerformance.advanced.totalScore,
+			modePerformance.advanced.totalDarts
+		);
 	}
 
 	// Recent trends (last 5 and 10 games)
 	const last5Games = games.slice(0, 5).map(g => ({
 		avg: g.avg3,
 		variant: g.start,
-		mode: g.hits && g.hits !== '[]' ? 'advanced' : 'simple',
-		completed: !(g.forfeited === 1 || g.forfeited === true),
+		mode: isAdvancedGame(g) ? ('advanced' as const) : ('simple' as const),
+		completed: !isForfeitedGame(g),
 	}));
 
 	const last10Games = games.slice(0, 10).map(g => ({
 		avg: g.avg3,
 		variant: g.start,
-		mode: g.hits && g.hits !== '[]' ? 'advanced' : 'simple',
-		completed: !(g.forfeited === 1 || g.forfeited === true),
+		mode: isAdvancedGame(g) ? ('advanced' as const) : ('simple' as const),
+		completed: !isForfeitedGame(g),
 	}));
 
 	// Game length statistics
@@ -164,6 +233,7 @@ export function getComprehensiveStats() {
 			count180s,
 			bestCheckout,
 		},
+		checkoutStats: calculateCheckoutStats(games),
 		scoreRanges,
 		recentTrends: { last5Games, last10Games },
 		gameLength: {
@@ -174,29 +244,22 @@ export function getComprehensiveStats() {
 	};
 }
 
-// Helper function to calculate checkout value
-function calculateCheckoutValue(checkout: string): number {
-	const checkoutValues = checkout.split(' ').map((shot: string) => {
-		if (shot.startsWith('T')) return parseInt(shot.slice(1)) * 3;
-		if (shot.startsWith('D')) return parseInt(shot.slice(1)) * 2;
-		if (shot === 'Bull') return 50;
-		if (shot === '25') return 25;
-		return parseInt(shot) || 0;
-	});
-	return checkoutValues.reduce((sum: number, val: number) => sum + val, 0);
+export function getComprehensiveStats(): ComprehensiveStats {
+	const games = db.getAllSync('SELECT * FROM games ORDER BY id DESC;') as GameRow[];
+	return calculateComprehensiveStats(games);
 }
 
 // Get mode-specific statistics
 export function getModeSpecificStats() {
-	const games = db.getAllSync('SELECT * FROM games ORDER BY id DESC;') as any[];
+	const games = db.getAllSync('SELECT * FROM games ORDER BY id DESC;') as GameRow[];
 
 	const modeStats = {
 		simple: { games: 0, avg3: 0, bestAvg: 0, totalDarts: 0, totalScore: 0, variants: { '301': 0, '401': 0, '501': 0 } },
 		advanced: { games: 0, avg3: 0, bestAvg: 0, totalDarts: 0, totalScore: 0, variants: { '301': 0, '401': 0, '501': 0 } },
-	};
+	} satisfies Record<GameMode, ModeSummary & { variants: GameVariantStats }>;
 
 	games.forEach(game => {
-		const isAdvanced = game.hits && game.hits !== '[]' && game.hits !== 'null';
+		const isAdvanced = isAdvancedGame(game);
 		const mode = isAdvanced ? 'advanced' : 'simple';
 
 		modeStats[mode].games++;
@@ -210,11 +273,11 @@ export function getModeSpecificStats() {
 	});
 
 	// Calculate averages
-	if (modeStats.simple.games > 0) {
-		modeStats.simple.avg3 = (modeStats.simple.totalScore / modeStats.simple.totalDarts) * 3;
+	if (modeStats.simple.totalDarts > 0) {
+		modeStats.simple.avg3 = calculateAvg3(modeStats.simple.totalScore, modeStats.simple.totalDarts);
 	}
-	if (modeStats.advanced.games > 0) {
-		modeStats.advanced.avg3 = (modeStats.advanced.totalScore / modeStats.advanced.totalDarts) * 3;
+	if (modeStats.advanced.totalDarts > 0) {
+		modeStats.advanced.avg3 = calculateAvg3(modeStats.advanced.totalScore, modeStats.advanced.totalDarts);
 	}
 
 	return modeStats;

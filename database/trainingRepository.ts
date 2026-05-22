@@ -1,5 +1,15 @@
 import { db } from '../lib/db';
 
+export type TrainingMode =
+	| 'target'
+	| 'checkout'
+	| 'clockClassic'
+	| 'clockDouble'
+	| 'clockTriple'
+	| 'clockJump'
+	| 'clockPenalty'
+	| 'bobs27';
+
 export interface TrainingSession {
 	id?: number;
 	date: string;
@@ -8,7 +18,7 @@ export interface TrainingSession {
 	misses: number;
 	duration: number; // in seconds
 	successRate: number;
-	trainingMode: 'target' | 'checkout'; // explicit training mode
+	trainingMode: TrainingMode; // explicit training mode
 	targetsPracticed: string[]; // array of target types practiced
 	targetResults?: { target: string; hit: boolean }[]; // individual target results
 }
@@ -23,7 +33,62 @@ export interface TrainingStats {
 	mostPracticedTargets: { target: string; count: number }[];
 }
 
+export type Bobs27Outcome = 'won' | 'lost' | null;
+
+type TrainingSessionRow = {
+	id: number;
+	date: string;
+	targets: number;
+	hits: number;
+	misses: number;
+	duration: number;
+	success_rate: number;
+	training_mode: TrainingMode | string | null;
+	targets_practiced: string | null;
+	target_results: string | null;
+};
+
 // Note: Training table is now initialized directly in lib/db.ts to avoid circular imports
+
+function safeJsonArray<T>(value: string | null | undefined): T[] {
+	if (!value) return [];
+	try {
+		const parsed = JSON.parse(value);
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+
+function mapTrainingSession(row: TrainingSessionRow): TrainingSession {
+	return {
+		id: row.id,
+		date: row.date,
+		targets: row.targets,
+		hits: row.hits,
+		misses: row.misses,
+		duration: row.duration,
+		successRate: row.success_rate,
+		trainingMode: normalizeTrainingMode(row.training_mode),
+		targetsPracticed: safeJsonArray<string>(row.targets_practiced),
+		targetResults: safeJsonArray<{ target: string; hit: boolean }>(row.target_results),
+	};
+}
+
+function normalizeTrainingMode(mode: string | null): TrainingMode {
+	if (
+		mode === 'checkout' ||
+		mode === 'clockClassic' ||
+		mode === 'clockDouble' ||
+		mode === 'clockTriple' ||
+		mode === 'clockJump' ||
+		mode === 'clockPenalty' ||
+		mode === 'bobs27'
+	) {
+		return mode;
+	}
+	return 'target';
+}
 
 // Save a training session
 export function saveTrainingSession(session: TrainingSession): number {
@@ -52,26 +117,12 @@ export function saveTrainingSession(session: TrainingSession): number {
 
 // Get all training sessions
 export function getTrainingSessions(): TrainingSession[] {
-	const rows = db.getAllSync('SELECT * FROM training_sessions ORDER BY date DESC') as any[];
+	const rows = db.getAllSync('SELECT * FROM training_sessions ORDER BY date DESC') as TrainingSessionRow[];
 
-	return rows.map(row => ({
-		id: row.id,
-		date: row.date,
-		targets: row.targets,
-		hits: row.hits,
-		misses: row.misses,
-		duration: row.duration,
-		successRate: row.success_rate,
-		trainingMode: row.training_mode || 'target', // Default to 'target' for backward compatibility
-		targetsPracticed: JSON.parse(row.targets_practiced),
-		targetResults: row.target_results ? JSON.parse(row.target_results) : [],
-	}));
+	return rows.map(mapTrainingSession);
 }
 
-// Get training statistics
-export function getTrainingStats(): TrainingStats {
-	const sessions = getTrainingSessions();
-
+export function calculateTrainingStats(sessions: TrainingSession[]): TrainingStats {
 	if (sessions.length === 0) {
 		return {
 			totalSessions: 0,
@@ -133,22 +184,35 @@ export function getTrainingStats(): TrainingStats {
 	};
 }
 
+export function getBobs27FinalScore(session: TrainingSession): number | null {
+	if (session.trainingMode !== 'bobs27') return null;
+
+	const scoreEntry = session.targetResults?.find(result => result.target.startsWith('Score '));
+	if (!scoreEntry) return null;
+
+	const score = Number(scoreEntry.target.replace('Score ', ''));
+	return Number.isFinite(score) ? score : null;
+}
+
+export function getBobs27Outcome(session: TrainingSession): Bobs27Outcome {
+	if (session.trainingMode !== 'bobs27') return null;
+
+	const finalScore = getBobs27FinalScore(session);
+	if (finalScore != null && finalScore <= 0) return 'lost';
+
+	return session.targetsPracticed.includes('D20') ? 'won' : null;
+}
+
+// Get training statistics
+export function getTrainingStats(): TrainingStats {
+	return calculateTrainingStats(getTrainingSessions());
+}
+
 // Get recent training sessions (last 10)
 export function getRecentTrainingSessions(limit: number = 10): TrainingSession[] {
-	const rows = db.getAllSync('SELECT * FROM training_sessions ORDER BY date DESC LIMIT ?', limit) as any[];
+	const rows = db.getAllSync('SELECT * FROM training_sessions ORDER BY date DESC LIMIT ?', limit) as TrainingSessionRow[];
 
-	return rows.map(row => ({
-		id: row.id,
-		date: row.date,
-		targets: row.targets,
-		hits: row.hits,
-		misses: row.misses,
-		duration: row.duration,
-		successRate: row.success_rate,
-		trainingMode: row.training_mode || 'target', // Default to 'target' for backward compatibility
-		targetsPracticed: JSON.parse(row.targets_practiced),
-		targetResults: row.target_results ? JSON.parse(row.target_results) : [],
-	}));
+	return rows.map(mapTrainingSession);
 }
 
 // Delete a training session
