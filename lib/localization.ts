@@ -121,6 +121,56 @@ export interface LocalizedStrings {
 	languageEnglish: string;
 	advancedMode: string;
 	advancedModeDescription: string;
+	turnHistoryLayout: string;
+	turnHistoryLayoutDescription: string;
+	turnHistoryLayoutWrapped: string;
+	turnHistoryLayoutScrollable: string;
+	displayMatch: string;
+	displayMatchDescription: string;
+	displayMatchToggle: string;
+	displayMatchToggleDescription: string;
+	displayMatchEnabled: string;
+	displayMatchDisabled: string;
+	displayLaptopAddress: string;
+	displayLocalhostWarning: string;
+	displayPlayerName: string;
+	displayPlayerNamePlaceholder: string;
+	displayMatchSetup: string;
+	displayMatchSetupDescription: string;
+	displayMatchButton: string;
+	displayMatchStart: string;
+	displayMatchBack: string;
+	displaySetupHowItWorks: string;
+	displaySetupStep1: string;
+	displaySetupStep2: string;
+	displaySetupStep3: string;
+	displaySetupStep4: string;
+	displaySetupStep5: string;
+	displaySetupStep6: string;
+	displaySetupStep7: string;
+	displaySetupStep8: string;
+	displayWinsMatch: string;
+	displayClosingLeg: string;
+	displayAtBoard: string;
+	displayEndScreen: string;
+	matchSets: string;
+	matchLegs: string;
+	tooltipOverallAverage: string;
+	tooltipBestAverage: string;
+	tooltipHighestFinish: string;
+	tooltipGames: string;
+	tooltipTotalDarts: string;
+	tooltipSuccessRate: string;
+	tooltipCount180s: string;
+	tooltipGameDistribution: string;
+	tooltipModeComparison: string;
+	tooltipScoreRanges: string;
+	tooltipCheckoutOverview: string;
+	tooltipGameLength: string;
+	tooltipTrainingSessions: string;
+	tooltipRecentTrends: string;
+	averageTrend: string;
+	tooltipAverageTrend: string;
 
 	// Common
 	close: string;
@@ -170,6 +220,8 @@ export interface LocalizedStrings {
 	forfeitScoreLeft: string;
 
 	// Additional
+	heatmap: string;
+	mpMultiplayerWifi: string;
 	pointsLeft: string;
 	avg: string;
 	darts: string;
@@ -251,6 +303,58 @@ export interface LocalizedStrings {
 	// UI Info
 	areVisibleIn: string;
 	tab: string;
+
+	// Multiplayer
+	mpConnecting: string;
+	mpMatchOver: string;
+	mpWins: string;
+	mpToMenu: string;
+	mpYourScore: string;
+	mpConfirmScore: string;
+	mpEditScore: string;
+	mpBustWarning: string;
+	mpSets: string;
+	mpLegs: string;
+	mpAverage: string;
+	mpWaitingForOpponent: string;
+	mpWaitingForHost: string;
+	mpPlayersTurn: string;
+	mpLeaveGame: string;
+	mpLeaveGameMessage: string;
+	mpStay: string;
+	mpLeave: string;
+	mpBustFlash: string;
+	mpLegWon: string;
+	mpLegLost: string;
+	mpSetWon: string;
+	mpSetLost: string;
+	mpHostWaiting: string;
+	mpRoomCreated: string;
+	mpRoomCode: string;
+	mpShareCode: string;
+	mpPlayers: string;
+	mpHost: string;
+	mpReady: string;
+	mpWaitingForPlayer: string;
+	mpStarting: string;
+	mpCancelRoom: string;
+	mpCancelRoomMessage: string;
+	mpCreateRoom: string;
+	mpJoinRoom: string;
+	mpCreating: string;
+	mpJoining: string;
+	mpYourName: string;
+	mpNamePlaceholder: string;
+	mpEnterName: string;
+	mpServerError: string;
+	mpServerErrorMsg: string;
+	mpRoomCodeLength: string;
+	mpJoinError: string;
+	mpWifiSameNetwork: string;
+	mpVariant: string;
+	mpAdvShort: string;
+	mpWhoStarts: string;
+	mpBullThrowHint: string;
 
 	// Data Backup
 	dataBackup: string;
@@ -384,6 +488,56 @@ const polishStrings: LocalizedStrings = {
 	languageEnglish: 'English',
 	advancedMode: 'Tryb zaawansowany',
 	advancedModeDescription: 'Śledź każdy rzut osobno',
+	turnHistoryLayout: 'Historia rund',
+	turnHistoryLayoutDescription: 'Wybierz, jak wyniki rund mają układać się podczas gry',
+	turnHistoryLayoutWrapped: 'Zawijane',
+	turnHistoryLayoutScrollable: 'Przewijane',
+	displayMatch: 'Ekran meczu',
+	displayMatchDescription: 'Telefon wysyła wynik do komputera z uruchomionym ekranem meczu.',
+	displayMatchToggle: 'Pokazuj mecz na ekranie',
+	displayMatchToggleDescription: 'Włącza przycisk na ekranie nowej gry.',
+	displayMatchEnabled: 'Włączone',
+	displayMatchDisabled: 'Wyłączone',
+	displayLaptopAddress: 'Adres laptopa',
+	displayLocalhostWarning: 'Na telefonie localhost oznacza telefon. Użyj IP komputera, np. http://10.0.0.42:3000.',
+	displayPlayerName: 'Twoja nazwa na ekranie',
+	displayPlayerNamePlaceholder: 'Gracz',
+	displayMatchSetup: 'Ustawienia meczu',
+	displayMatchSetupDescription: 'Wybierz format meczu przed połączeniem z ekranem.',
+	displayMatchButton: 'Mecz na ekranie',
+	displayMatchStart: 'Rozpocznij na ekranie',
+	displayMatchBack: 'Wróć',
+	displaySetupHowItWorks: 'Jak uruchomić ekran na laptopie?',
+	displaySetupStep1: '1. Zainstaluj Node.js ze strony nodejs.org (wersja LTS)',
+	displaySetupStep2: '2. Skopiuj folder "display-server" z projektu na laptopa',
+	displaySetupStep3: '3. Otwórz terminal w tym folderze i wpisz: npm install  (tylko raz)',
+	displaySetupStep4: '4. Uruchom serwer: npm start  (terminal musi być otwarty)',
+	displaySetupStep5: '5. Na laptopie otwórz przeglądarkę → wejdź na: http://localhost:3000 → powinien pojawić się ekran gry',
+	displaySetupStep6: '6. Znajdź IP laptopa: Windows → cmd → ipconfig → "Adres IPv4"  |  Mac → Terminal → ifconfig → "inet"',
+	displaySetupStep7: '7. W polu "Adres laptopa" poniżej wpisz: http://[IP]:3000  np. http://10.0.0.42:3000',
+	displaySetupStep8: '8. Telefon i laptop muszą być w tej samej sieci WiFi!',
+	displayWinsMatch: 'wygrywa mecz',
+	displayClosingLeg: 'zamyka leg',
+	displayAtBoard: 'przy tarczy',
+	displayEndScreen: 'Zakończ ekran',
+	matchSets: 'Sety',
+	matchLegs: 'Legi',
+	tooltipOverallAverage: 'Średnia 3 lotek z wybranych gier. Wzór: zdobyte punkty / rzucone lotki x 3.',
+	tooltipBestAverage: 'Najwyższa średnia 3 lotek uzyskana w jednej zapisanej grze.',
+	tooltipHighestFinish: 'Najwyższy zapisany finisz, czyli wynik zamknięty ostatnim poprawnym doublem lub bullem.',
+	tooltipGames: 'Liczba gier widocznych po aktualnych filtrach.',
+	tooltipTotalDarts: 'Łączna liczba lotek rzuconych w wybranych grach. W trybie prostym liczymy 3 lotki na rundę, z korektą ostatniej rundy przy finiszu.',
+	tooltipSuccessRate: 'Procent gier zakończonych finiszem. Wzór: ukończone gry / wszystkie wybrane gry x 100%.',
+	tooltipCount180s: 'Liczba rund, w których wynik rundy wyniósł dokładnie 180.',
+	tooltipGameDistribution: 'Podział wybranych gier według wariantu oraz statusu: ukończone lub przerwane.',
+	tooltipModeComparison: 'Porównanie trybu prostego i zaawansowanego. Średnia jest liczona osobno dla gier z danego trybu.',
+	tooltipScoreRanges: 'Liczba rund, które osiągnęły dany próg punktowy, np. 100+, 140+ lub 180.',
+	tooltipCheckoutOverview: 'Statystyki tylko dla ukończonych finiszów. Średni finisz to suma wartości finiszów podzielona przez ich liczbę.',
+	tooltipGameLength: 'Długość gry liczona liczbą rzuconych lotek: najkrótsza, średnia i najdłuższa gra.',
+	tooltipTrainingSessions: 'Podsumowanie zapisanych treningów: liczba sesji, skuteczność, liczba celów i najlepsza sesja.',
+	tooltipRecentTrends: 'Średnia i liczba ukończonych gier z ostatnich 5 oraz 10 zapisanych partii.',
+	averageTrend: 'Trend średniej',
+	tooltipAverageTrend: 'Wykres średniej 3-lotkowej z maksymalnie 30 ostatnich gier (od najstarszej do najnowszej). Puste kółko oznacza grę nieukończoną.',
 	close: 'Zamknij',
 	cancel: 'Anuluj',
 	delete: 'Usuń',
@@ -415,6 +569,8 @@ const polishStrings: LocalizedStrings = {
 	legend10Hits: '10 rzutów',
 	legend15Hits: '15 rzutów',
 	legend20PlusHits: '20 rzutów i więcej',
+	heatmap: 'Heatmap',
+	mpMultiplayerWifi: 'Multiplayer (WiFi)',
 	forfeitScore: 'Wynik poddającego',
 	forfeitScoreLeft: 'Pozostało',
 	pointsLeft: 'Punkty pozostałe',
@@ -508,6 +664,56 @@ const polishStrings: LocalizedStrings = {
 	backupErrorExport: 'Nie udało się wyeksportować danych.',
 	backupErrorImport: 'Nie udało się zaimportować danych.',
 	backupErrorInvalidFile: 'Wybrany plik nie jest poprawnym backupem.',
+	mpConnecting: 'Łączenie z pokojem...',
+	mpMatchOver: 'KONIEC MECZU',
+	mpWins: 'WYGRYWA!',
+	mpToMenu: 'Do menu',
+	mpYourScore: 'WYNIK TURY',
+	mpConfirmScore: 'Potwierdź',
+	mpEditScore: 'Popraw',
+	mpBustWarning: 'SPALONO!',
+	mpSets: 'SETY',
+	mpLegs: 'LEGI',
+	mpAverage: 'ŚREDNIA',
+	mpWaitingForOpponent: 'Czekam na drugiego gracza...',
+	mpWaitingForHost: 'Czekam na start od gospodarza...',
+	mpPlayersTurn: 'Tura gracza',
+	mpLeaveGame: 'Opuść grę',
+	mpLeaveGameMessage: 'Czy na pewno chcesz opuścić grę? Aktualny leg zostanie zapisany jako nieukończony.',
+	mpStay: 'Zostań',
+	mpLeave: 'Wyjdź',
+	mpBustFlash: 'SPALONKO!',
+	mpLegWon: 'LEG WYGRANY!',
+	mpLegLost: 'LEG PRZEGRANY...',
+	mpSetWon: 'SET WYGRANY!',
+	mpSetLost: 'SET PRZEGRANY...',
+	mpHostWaiting: 'Gospodarz · Czekanie',
+	mpRoomCreated: 'Pokój stworzony',
+	mpRoomCode: 'KOD POKOJU',
+	mpShareCode: 'Podaj ten kod drugiemu graczowi',
+	mpPlayers: 'GRACZE',
+	mpHost: 'Gospodarz',
+	mpReady: 'GOTOWY',
+	mpWaitingForPlayer: 'Czekam na gracza...',
+	mpStarting: 'Uruchamianie...',
+	mpCancelRoom: 'Anuluj pokój',
+	mpCancelRoomMessage: 'Czy chcesz anulować pokój i wrócić do menu?',
+	mpCreateRoom: 'Utwórz pokój',
+	mpJoinRoom: 'Dołącz do pokoju',
+	mpCreating: 'Tworzenie...',
+	mpJoining: 'Dołączanie...',
+	mpYourName: 'Twoje imię',
+	mpNamePlaceholder: 'Wpisz imię...',
+	mpEnterName: 'Wpisz swoje imię',
+	mpServerError: 'Błąd połączenia',
+	mpServerErrorMsg: 'Nie można połączyć się z serwerem. Sprawdź czy oba urządzenia są w tej samej sieci WiFi.',
+	mpRoomCodeLength: 'Kod pokoju musi mieć dokładnie 4 znaki',
+	mpJoinError: 'Nie można dołączyć do pokoju',
+	mpWifiSameNetwork: 'WiFi · ta sama sieć',
+	mpVariant: 'Wariant',
+	mpAdvShort: 'ZAW',
+	mpWhoStarts: 'Kto zaczyna?',
+	mpBullThrowHint: 'Zdecyduj rzutem w bulla',
 };
 
 const englishStrings: LocalizedStrings = {
@@ -616,6 +822,56 @@ const englishStrings: LocalizedStrings = {
 	languageEnglish: 'English',
 	advancedMode: 'Advanced mode',
 	advancedModeDescription: 'Track each throw separately',
+	turnHistoryLayout: 'Turn history',
+	turnHistoryLayoutDescription: 'Choose how turn scores are arranged during a game',
+	turnHistoryLayoutWrapped: 'Wrapped',
+	turnHistoryLayoutScrollable: 'Scrollable',
+	displayMatch: 'Match screen',
+	displayMatchDescription: 'The phone sends the score to the computer running the match screen.',
+	displayMatchToggle: 'Show match screen option',
+	displayMatchToggleDescription: 'Enables the button on the new game screen.',
+	displayMatchEnabled: 'Enabled',
+	displayMatchDisabled: 'Disabled',
+	displayLaptopAddress: 'Laptop address',
+	displayLocalhostWarning: 'On a phone, localhost means the phone itself. Use the computer IP, for example http://10.0.0.42:3000.',
+	displayPlayerName: 'Your screen name',
+	displayPlayerNamePlaceholder: 'Player',
+	displayMatchSetup: 'Match settings',
+	displayMatchSetupDescription: 'Choose the match format before connecting to the screen.',
+	displayMatchButton: 'Match on screen',
+	displayMatchStart: 'Start on screen',
+	displayMatchBack: 'Back',
+	displaySetupHowItWorks: 'How to set up the display on a laptop?',
+	displaySetupStep1: '1. Install Node.js from nodejs.org (LTS version)',
+	displaySetupStep2: '2. Copy the "display-server" folder from the project to the laptop',
+	displaySetupStep3: '3. Open a terminal in that folder and run: npm install  (once only)',
+	displaySetupStep4: '4. Start the server: npm start  (keep the terminal open)',
+	displaySetupStep5: '5. On the laptop open a browser → go to: http://localhost:3000 → the scoreboard should appear',
+	displaySetupStep6: '6. Find the laptop IP: Windows → cmd → ipconfig → "IPv4 Address"  |  Mac → Terminal → ifconfig → "inet"',
+	displaySetupStep7: '7. In the "Laptop address" field below enter: http://[IP]:3000  e.g. http://10.0.0.42:3000',
+	displaySetupStep8: '8. The phone and laptop must be on the same WiFi network!',
+	displayWinsMatch: 'wins match',
+	displayClosingLeg: 'closing leg',
+	displayAtBoard: 'at the board',
+	displayEndScreen: 'End screen',
+	matchSets: 'Sets',
+	matchLegs: 'Legs',
+	tooltipOverallAverage: '3-dart average from the selected games. Formula: scored points / darts thrown x 3.',
+	tooltipBestAverage: 'The highest 3-dart average achieved in one saved game.',
+	tooltipHighestFinish: 'The highest saved checkout, finished with a valid double or bull.',
+	tooltipGames: 'Number of games visible with the current filters.',
+	tooltipTotalDarts: 'Total darts thrown in the selected games. In simple mode, 3 darts are counted per turn, with a last-turn checkout correction.',
+	tooltipSuccessRate: 'Percentage of games finished with a checkout. Formula: completed games / all selected games x 100%.',
+	tooltipCount180s: 'Number of turns where the turn score was exactly 180.',
+	tooltipGameDistribution: 'Breakdown of selected games by variant and status: completed or forfeited.',
+	tooltipModeComparison: 'Comparison between simple and advanced mode. The average is calculated separately for each mode.',
+	tooltipScoreRanges: 'Number of turns that reached each scoring threshold, such as 100+, 140+ or 180.',
+	tooltipCheckoutOverview: 'Stats for completed checkouts only. Average checkout is the sum of checkout values divided by checkout count.',
+	tooltipGameLength: 'Game length counted in darts thrown: shortest, average and longest game.',
+	tooltipTrainingSessions: 'Summary of saved training sessions: sessions, success rate, targets and best session.',
+	tooltipRecentTrends: 'Average and completed game count from the last 5 and last 10 saved games.',
+	averageTrend: 'Average trend',
+	tooltipAverageTrend: 'Chart of 3-dart average for the last 30 games (oldest to newest). An empty dot means an unfinished game.',
 	close: 'Close',
 	cancel: 'Cancel',
 	delete: 'Delete',
@@ -647,6 +903,8 @@ const englishStrings: LocalizedStrings = {
 	legend10Hits: '10 throws',
 	legend15Hits: '15 throws',
 	legend20PlusHits: '20 throws and more',
+	heatmap: 'Heatmap',
+	mpMultiplayerWifi: 'Multiplayer (WiFi)',
 	forfeitScore: 'Forfeit score',
 	forfeitScoreLeft: 'Score left',
 	pointsLeft: 'Points left',
@@ -740,6 +998,56 @@ const englishStrings: LocalizedStrings = {
 	backupErrorExport: 'Failed to export data.',
 	backupErrorImport: 'Failed to import data.',
 	backupErrorInvalidFile: 'The selected file is not a valid backup.',
+	mpConnecting: 'Connecting to room...',
+	mpMatchOver: 'MATCH OVER',
+	mpWins: 'WINS!',
+	mpToMenu: 'To menu',
+	mpYourScore: 'TURN SCORE',
+	mpConfirmScore: 'Confirm',
+	mpEditScore: 'Edit',
+	mpBustWarning: 'BUST!',
+	mpSets: 'SETS',
+	mpLegs: 'LEGS',
+	mpAverage: 'AVERAGE',
+	mpWaitingForOpponent: 'Waiting for opponent...',
+	mpWaitingForHost: 'Waiting for host to start...',
+	mpPlayersTurn: "Player's turn",
+	mpLeaveGame: 'Leave game',
+	mpLeaveGameMessage: 'Are you sure you want to leave? The current leg will be saved as unfinished.',
+	mpStay: 'Stay',
+	mpLeave: 'Leave',
+	mpBustFlash: 'BUST!',
+	mpLegWon: 'LEG WON!',
+	mpLegLost: 'LEG LOST...',
+	mpSetWon: 'SET WON!',
+	mpSetLost: 'SET LOST...',
+	mpHostWaiting: 'Host · Waiting',
+	mpRoomCreated: 'Room Created',
+	mpRoomCode: 'ROOM CODE',
+	mpShareCode: 'Share this code with the other player',
+	mpPlayers: 'PLAYERS',
+	mpHost: 'Host',
+	mpReady: 'READY',
+	mpWaitingForPlayer: 'Waiting for player...',
+	mpStarting: 'Starting...',
+	mpCancelRoom: 'Cancel room',
+	mpCancelRoomMessage: 'Do you want to cancel the room and return to menu?',
+	mpCreateRoom: 'Create room',
+	mpJoinRoom: 'Join room',
+	mpCreating: 'Creating...',
+	mpJoining: 'Joining...',
+	mpYourName: 'Your name',
+	mpNamePlaceholder: 'Enter name...',
+	mpEnterName: 'Enter your name',
+	mpServerError: 'Connection error',
+	mpServerErrorMsg: 'Could not connect to server. Make sure both devices are on the same WiFi network.',
+	mpRoomCodeLength: 'Room code must be exactly 4 characters',
+	mpJoinError: 'Cannot join the room',
+	mpWifiSameNetwork: 'WiFi · same network',
+	mpVariant: 'Variant',
+	mpAdvShort: 'ADV',
+	mpWhoStarts: 'Who starts?',
+	mpBullThrowHint: 'Decide with a bull throw',
 };
 
 export function getLocalizedStrings(language: Language): LocalizedStrings {

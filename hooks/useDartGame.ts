@@ -18,14 +18,15 @@ export type PendingCheckoutData = {
 
 type UseDartGameParams = {
 	initialScore: number;
+	advancedOverride?: boolean;
 };
 
-export function useDartGame({ initialScore }: UseDartGameParams) {
+export function useDartGame({ initialScore, advancedOverride }: UseDartGameParams) {
 	const [turns, setTurns] = useState<number[]>([]);
 	const [hits, setHits] = useState<Dart[]>([]);
 	const [gameHits, setGameHits] = useState<Dart[]>([]);
 	const [turnHitCounts, setTurnHitCounts] = useState<number[]>([]);
-	const [advanced, setAdvanced] = useState(false);
+	const [advanced, setAdvanced] = useState(advancedOverride ?? false);
 	const [gameOver, setGameOver] = useState(false);
 	const [showCheckoutDartsModal, setShowCheckoutDartsModal] = useState(false);
 	const [showForfeitModal, setShowForfeitModal] = useState(false);
@@ -34,12 +35,17 @@ export function useDartGame({ initialScore }: UseDartGameParams) {
 
 	useFocusEffect(
 		useCallback(() => {
+			if (advancedOverride !== undefined) {
+				setAdvanced(advancedOverride);
+				return undefined;
+			}
+
 			let active = true;
 			getAdvanced().then(value => active && setAdvanced(value));
 			return () => {
 				active = false;
 			};
-		}, [])
+		}, [advancedOverride])
 	);
 
 	useEffect(() => {

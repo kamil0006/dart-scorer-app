@@ -2,7 +2,28 @@ import { GameVariant } from '../lib/gameVariant';
 
 export type RootStackParamList = {
 	NewGame: undefined;
-	Game: { initialScore: number; variant: GameVariant };
+	Game: {
+		initialScore: number;
+		variant: GameVariant;
+		displayMode?: boolean;
+		advancedOverride?: boolean;
+		setsTarget?: number;
+		legsTarget?: number;
+	};
+	Multiplayer: undefined;
+	RoomLobby: {
+		roomCode: string;
+		playerId: string;
+		playerName: string;
+		serverUrl: string;
+	};
+	RoomGame: {
+		roomCode: string;
+		playerId: string;
+		playerName: string;
+		serverUrl: string;
+		seat: number;
+	};
 	StatsList: undefined;
 	StatsDetail: {
 		id: number;
@@ -17,6 +38,4 @@ export type RootStackParamList = {
 		forfeited?: boolean;
 		forfeitScore?: number;
 	};
-	Heatmap: undefined;
-	Training: undefined;
 };

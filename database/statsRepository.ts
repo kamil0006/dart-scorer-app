@@ -61,6 +61,7 @@ export type ComprehensiveStats = {
 	recentTrends: {
 		last5Games: RecentTrendGame[];
 		last10Games: RecentTrendGame[];
+		last30Games: RecentTrendGame[];
 	};
 	gameLength: {
 		shortest: number;
@@ -89,7 +90,7 @@ export function calculateComprehensiveStats(games: GameRow[]): ComprehensiveStat
 			achievements: { highestFinish: 0, count180s: 0, bestCheckout: 0 },
 			checkoutStats: createEmptyCheckoutStats(),
 			scoreRanges: { '100+': 0, '120+': 0, '140+': 0, '160+': 0, '180': 0 },
-			recentTrends: { last5Games: [], last10Games: [] },
+			recentTrends: { last5Games: [], last10Games: [], last30Games: [] },
 			gameLength: { shortest: 0, longest: 0, average: 0 },
 		};
 	}
@@ -207,6 +208,13 @@ export function calculateComprehensiveStats(games: GameRow[]): ComprehensiveStat
 		completed: !isForfeitedGame(g),
 	}));
 
+	const last30Games = games.slice(0, 30).reverse().map(g => ({
+		avg: g.avg3,
+		variant: g.start,
+		mode: isAdvancedGame(g) ? ('advanced' as const) : ('simple' as const),
+		completed: !isForfeitedGame(g),
+	}));
+
 	// Game length statistics
 	const shortest = Math.min(...gameLengths);
 	const longest = Math.max(...gameLengths);
@@ -235,7 +243,7 @@ export function calculateComprehensiveStats(games: GameRow[]): ComprehensiveStat
 		},
 		checkoutStats: calculateCheckoutStats(games),
 		scoreRanges,
-		recentTrends: { last5Games, last10Games },
+		recentTrends: { last5Games, last10Games, last30Games },
 		gameLength: {
 			shortest,
 			longest,

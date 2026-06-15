@@ -3,6 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { StackScreenProps } from '@react-navigation/stack';
 import React from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import DartboardHeatmap from '../components/game/DartboardHeatmap';
 import { formatDarts } from '../lib/dartsFormatter';
@@ -27,10 +28,12 @@ export default function StatsDetailScreen({ route, navigation }: Props) {
 	});
 
 	const renderTurn = ({ item, index }: { item: TurnDetail; index: number }) => (
-		<View style={[styles.row, item.score === 0 && styles.bustRow]}>
+		<View style={[styles.row, item.isWeak && styles.weakRow, item.score === 0 && styles.bustRow]}>
 			<Text style={styles.rowIdx}>#{index + 1}</Text>
 			<View style={styles.rowValues}>
-				<Text style={styles.rowPts}>{item.score}</Text>
+				<View style={styles.rowScoreLine}>
+					<Text style={[styles.rowPts, item.isWeak && styles.weakPts]}>{item.score}</Text>
+				</View>
 				<Text style={styles.rowRemaining}>
 					{strings.leftAfterTurn}: {item.remaining}
 				</Text>
@@ -39,7 +42,7 @@ export default function StatsDetailScreen({ route, navigation }: Props) {
 	);
 
 	return (
-		<View style={styles.container}>
+		<SafeAreaView style={styles.container}>
 			<View style={styles.header}>
 				<Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
 					<Ionicons name='chevron-back' size={26} color='#8AB4F8' />
@@ -83,9 +86,9 @@ export default function StatsDetailScreen({ route, navigation }: Props) {
 					<Text style={styles.sectionTitle}>{strings.gameAnalysis}</Text>
 					<View style={styles.analysisGrid}>
 						<AnalysisTile icon='trending-up' label={strings.bestTurn} value={detailStats.bestTurn} color='#8AB4F8' />
-						<AnalysisTile icon='functions' label={strings.averageTurn} value={detailStats.averageTurn.toFixed(1)} color='#F2C94C' />
+						<AnalysisTile icon='functions' label={strings.averageTurn} value={detailStats.averageTurn.toFixed(1)} color='#5BD3C7' />
 						<AnalysisTile icon='whatshot' label={strings.score100plus} value={detailStats.bigTurns} color='#60D394' />
-						<AnalysisTile icon='warning' label={strings.weakTurns} value={detailStats.weakTurns} color='#D94A5A' />
+						<AnalysisTile icon='warning' label={strings.weakTurns} value={detailStats.weakTurns} color='#F2C94C' />
 					</View>
 				</View>
 
@@ -102,18 +105,19 @@ export default function StatsDetailScreen({ route, navigation }: Props) {
 
 				{isAdvanced ? (
 					<View style={styles.section}>
-						<Text style={styles.sectionTitle}>Heatmap</Text>
+						<Text style={styles.sectionTitle}>{strings.heatmap}</Text>
 						<DartboardHeatmap hits={parsedHits} onThrow={() => undefined} readonly />
 					</View>
 				) : null}
 			</ScrollView>
-		</View>
+		</SafeAreaView>
 	);
 }
 
 type TurnDetail = {
 	score: number;
 	remaining: number;
+	isWeak: boolean;
 };
 
 function getGameDetailStats(turns: number[], start: number) {
@@ -123,7 +127,7 @@ function getGameDetailStats(turns: number[], start: number) {
 		if (score > 0) {
 			remaining = Math.max(0, remaining - score);
 		}
-		return { score, remaining };
+		return { score, remaining, isWeak: score > 0 && score < 45 };
 	});
 
 	return {
@@ -334,6 +338,11 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderColor: '#D94A5A',
 	},
+	weakRow: {
+		borderWidth: 1,
+		borderColor: '#F2C94C',
+		backgroundColor: '#2B2618',
+	},
 	rowIdx: {
 		color: '#aaa',
 		fontSize: 12,
@@ -344,8 +353,16 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		fontWeight: '900',
 	},
+	weakPts: {
+		color: '#F2C94C',
+	},
 	rowValues: {
 		alignItems: 'flex-end',
+	},
+	rowScoreLine: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 6,
 	},
 	rowRemaining: {
 		color: '#8B949E',

@@ -1,4 +1,4 @@
-import { db } from '../lib/db';
+import { db, ensureDBReady } from '../lib/db';
 
 export type TrainingMode =
 	| 'target'
@@ -93,6 +93,7 @@ function normalizeTrainingMode(mode: string | null): TrainingMode {
 // Save a training session
 export function saveTrainingSession(session: TrainingSession): number {
 	try {
+		ensureDBReady();
 		const result = db.runSync(
 			`INSERT INTO training_sessions 
 			(date, targets, hits, misses, duration, success_rate, training_mode, targets_practiced, target_results)
@@ -108,7 +109,7 @@ export function saveTrainingSession(session: TrainingSession): number {
 			JSON.stringify(session.targetResults || [])
 		);
 
-		return result.lastInsertRowId as number;
+		return result.lastInsertRowId;
 	} catch (error) {
 		console.error('Failed to save training session:', error);
 		throw error;
@@ -117,6 +118,7 @@ export function saveTrainingSession(session: TrainingSession): number {
 
 // Get all training sessions
 export function getTrainingSessions(): TrainingSession[] {
+	ensureDBReady();
 	const rows = db.getAllSync('SELECT * FROM training_sessions ORDER BY date DESC') as TrainingSessionRow[];
 
 	return rows.map(mapTrainingSession);
@@ -210,6 +212,7 @@ export function getTrainingStats(): TrainingStats {
 
 // Get recent training sessions (last 10)
 export function getRecentTrainingSessions(limit: number = 10): TrainingSession[] {
+	ensureDBReady();
 	const rows = db.getAllSync('SELECT * FROM training_sessions ORDER BY date DESC LIMIT ?', limit) as TrainingSessionRow[];
 
 	return rows.map(mapTrainingSession);
@@ -217,10 +220,12 @@ export function getRecentTrainingSessions(limit: number = 10): TrainingSession[]
 
 // Delete a training session
 export function deleteTrainingSession(id: number): void {
+	ensureDBReady();
 	db.runSync('DELETE FROM training_sessions WHERE id = ?', id);
 }
 
 // Clear all training data
 export function clearTrainingData(): void {
+	ensureDBReady();
 	db.runSync('DELETE FROM training_sessions');
 }

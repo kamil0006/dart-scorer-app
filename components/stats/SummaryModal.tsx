@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ComprehensiveStats, RecentTrendGame } from '../../database/statsRepository';
+import AverageTrendChart from './AverageTrendChart';
 import { TrainingStats } from '../../database/trainingRepository';
 import { formatDarts } from '../../lib/dartsFormatter';
 import { createEmptyScoreRanges } from '../../lib/dartsStats';
@@ -40,6 +41,7 @@ type Props = {
 
 export default function SummaryModal({ visible, onClose, stats, comprehensiveStats, trainingStats }: Props) {
 	const { strings } = useLanguage();
+	const [infoText, setInfoText] = useState<string | null>(null);
 	const successRate = stats.played > 0 ? Math.round((stats.completedGames / stats.played) * 100) : 0;
 	const dartsLabel = formatDarts(stats.allDarts, {
 		dart: strings.dart,
@@ -65,24 +67,33 @@ export default function SummaryModal({ visible, onClose, stats, comprehensiveSta
 				<ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
 					<View style={styles.hero}>
 						<View style={styles.heroMain}>
-							<Text style={styles.heroLabel}>{strings.overallAverage}</Text>
+							<View style={styles.labelWithInfo}>
+								<Text style={styles.heroLabel}>{strings.overallAverage}</Text>
+								<InfoButton onPress={() => setInfoText(strings.tooltipOverallAverage)} dark />
+							</View>
 							<Text style={styles.heroValue}>{stats.allAvg}</Text>
 							<Text style={styles.heroHint}>{strings.threeDartAverage}</Text>
 						</View>
 						<View style={styles.heroSide}>
-							<HeroMetric icon='star' label={strings.bestAverage} value={stats.bestAvg} />
-							<HeroMetric icon='trending-up' label={strings.highestFinish} value={stats.highestCheckout} />
+							<HeroMetric icon='star' label={strings.bestAverage} value={stats.bestAvg} info={strings.tooltipBestAverage} onInfo={setInfoText} />
+							<HeroMetric
+								icon='trending-up'
+								label={strings.highestFinish}
+								value={stats.highestCheckout}
+								info={strings.tooltipHighestFinish}
+								onInfo={setInfoText}
+							/>
 						</View>
 					</View>
 
 					<View style={styles.quickGrid}>
-						<MiniCard icon='sports-score' label={strings.games} value={stats.played} />
-						<MiniCard icon='gps-fixed' label={strings.totalDarts} value={dartsLabel} />
-						<MiniCard icon='check-circle' label={strings.successRate} value={`${successRate}%`} />
-						<MiniCard icon='whatshot' label='180s' value={stats.count180s} />
+						<MiniCard icon='sports-score' label={strings.games} value={stats.played} info={strings.tooltipGames} onInfo={setInfoText} />
+						<MiniCard icon='gps-fixed' label={strings.totalDarts} value={dartsLabel} info={strings.tooltipTotalDarts} onInfo={setInfoText} />
+						<MiniCard icon='check-circle' label={strings.successRate} value={`${successRate}%`} info={strings.tooltipSuccessRate} onInfo={setInfoText} />
+						<MiniCard icon='whatshot' label={`${strings.score180}s`} value={stats.count180s} info={strings.tooltipCount180s} onInfo={setInfoText} />
 					</View>
 
-					<Section title={strings.gameDistribution}>
+					<Section title={strings.gameDistribution} info={strings.tooltipGameDistribution} onInfo={setInfoText}>
 						<View style={styles.pillRow}>
 							<MetricPill label='301' value={stats.g301} />
 							<MetricPill label='401' value={stats.g401} />
@@ -94,14 +105,14 @@ export default function SummaryModal({ visible, onClose, stats, comprehensiveSta
 						</View>
 					</Section>
 
-					<Section title={strings.modeComparison}>
+					<Section title={strings.modeComparison} info={strings.tooltipModeComparison} onInfo={setInfoText}>
 						<View style={styles.modeGrid}>
 							<ModeCard title={strings.modeSimple} mode={stats.modeStats.simple} />
 							<ModeCard title={strings.modeAdvanced} mode={stats.modeStats.advanced} />
 						</View>
 					</Section>
 
-					<Section title={strings.scoreRanges}>
+					<Section title={strings.scoreRanges} info={strings.tooltipScoreRanges} onInfo={setInfoText}>
 						<View style={styles.scoreGrid}>
 							<MetricPill label={strings.score100plus} value={stats.scoreRanges['100+']} />
 							<MetricPill label={strings.score120plus} value={stats.scoreRanges['120+']} />
@@ -112,7 +123,7 @@ export default function SummaryModal({ visible, onClose, stats, comprehensiveSta
 					</Section>
 
 					{comprehensiveStats && comprehensiveStats.checkoutStats.total > 0 && (
-						<Section title={strings.checkoutOverview}>
+						<Section title={strings.checkoutOverview} info={strings.tooltipCheckoutOverview} onInfo={setInfoText}>
 							<View style={styles.pillRow}>
 								<MetricPill label={strings.checkoutCount} value={comprehensiveStats.checkoutStats.total} />
 								<MetricPill label={strings.averageCheckout} value={comprehensiveStats.checkoutStats.averageValue} />
@@ -146,7 +157,7 @@ export default function SummaryModal({ visible, onClose, stats, comprehensiveSta
 					)}
 
 					{comprehensiveStats && (
-						<Section title={strings.gameLength}>
+						<Section title={strings.gameLength} info={strings.tooltipGameLength} onInfo={setInfoText}>
 							<View style={styles.pillRow}>
 								<MetricPill label={strings.shortest} value={comprehensiveStats.gameLength.shortest} />
 								<MetricPill label={strings.avgLength} value={comprehensiveStats.gameLength.average} />
@@ -156,7 +167,7 @@ export default function SummaryModal({ visible, onClose, stats, comprehensiveSta
 					)}
 
 					{trainingStats && trainingStats.totalSessions > 0 && (
-						<Section title={strings.trainingSessions}>
+						<Section title={strings.trainingSessions} info={strings.tooltipTrainingSessions} onInfo={setInfoText}>
 							<View style={styles.quickGridCompact}>
 								<MiniCard icon='school' label={strings.trainingSessions} value={trainingStats.totalSessions} compact />
 								<MiniCard icon='check-circle' label={strings.trainingSuccess} value={`${trainingStats.overallSuccessRate}%`} compact />
@@ -167,27 +178,63 @@ export default function SummaryModal({ visible, onClose, stats, comprehensiveSta
 					)}
 
 					{comprehensiveStats && (
-						<Section title={strings.recentTrends}>
+						<Section title={strings.recentTrends} info={strings.tooltipRecentTrends} onInfo={setInfoText}>
 							<View style={styles.trendsGrid}>
 								<RecentTrend label={strings.last5Games} games={comprehensiveStats.recentTrends.last5Games} />
 								<RecentTrend label={strings.last10Games} games={comprehensiveStats.recentTrends.last10Games} />
 							</View>
 						</Section>
 					)}
+
+					{comprehensiveStats && comprehensiveStats.recentTrends.last30Games.length >= 2 && (
+						<Section title={strings.averageTrend} info={strings.tooltipAverageTrend} onInfo={setInfoText}>
+							<AverageTrendChart games={comprehensiveStats.recentTrends.last30Games} />
+						</Section>
+					)}
 				</ScrollView>
+
+				<Modal visible={Boolean(infoText)} transparent animationType='fade' onRequestClose={() => setInfoText(null)}>
+					<Pressable style={styles.infoOverlay} onPress={() => setInfoText(null)}>
+						<Pressable style={styles.infoCard}>
+							<View style={styles.infoHeader}>
+								<MaterialIcons name='info-outline' size={22} color='#8AB4F8' />
+								<Text style={styles.infoTitle}>{strings.info}</Text>
+							</View>
+							<Text style={styles.infoBody}>{infoText}</Text>
+							<Pressable style={styles.infoCloseButton} onPress={() => setInfoText(null)}>
+								<Text style={styles.infoCloseText}>{strings.ok}</Text>
+							</Pressable>
+						</Pressable>
+					</Pressable>
+				</Modal>
 			</View>
 		</Modal>
 	);
 }
 
-function HeroMetric({ icon, label, value }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; value: string | number }) {
+function HeroMetric({
+	icon,
+	label,
+	value,
+	info,
+	onInfo,
+}: {
+	icon: keyof typeof MaterialIcons.glyphMap;
+	label: string;
+	value: string | number;
+	info?: string;
+	onInfo?: (info: string) => void;
+}) {
 	return (
 		<View style={styles.heroMetric}>
 			<MaterialIcons name={icon} size={18} color='#8AB4F8' />
 			<View style={styles.heroMetricCopy}>
-				<Text style={styles.heroMetricLabel} numberOfLines={1}>
-					{label}
-				</Text>
+				<View style={styles.labelWithInfo}>
+					<Text style={styles.heroMetricLabel} numberOfLines={1}>
+						{label}
+					</Text>
+					{info && onInfo && <InfoButton onPress={() => onInfo(info)} />}
+				</View>
 				<Text style={styles.heroMetricValue}>{value}</Text>
 			</View>
 		</View>
@@ -199,15 +246,22 @@ function MiniCard({
 	label,
 	value,
 	compact,
+	info,
+	onInfo,
 }: {
 	icon: keyof typeof MaterialIcons.glyphMap;
 	label: string;
 	value: string | number;
 	compact?: boolean;
+	info?: string;
+	onInfo?: (info: string) => void;
 }) {
 	return (
 		<View style={[styles.miniCard, compact && styles.miniCardCompact]}>
-			<MaterialIcons name={icon} size={20} color='#8AB4F8' />
+			<View style={styles.miniHeader}>
+				<MaterialIcons name={icon} size={20} color='#8AB4F8' />
+				{info && onInfo && <InfoButton onPress={() => onInfo(info)} />}
+			</View>
 			<Text style={styles.miniValue} numberOfLines={1}>
 				{value}
 			</Text>
@@ -218,12 +272,33 @@ function MiniCard({
 	);
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+	title,
+	children,
+	info,
+	onInfo,
+}: {
+	title: string;
+	children: React.ReactNode;
+	info?: string;
+	onInfo?: (info: string) => void;
+}) {
 	return (
 		<View style={styles.section}>
-			<Text style={styles.sectionTitle}>{title}</Text>
+			<View style={styles.sectionHeader}>
+				<Text style={styles.sectionTitle}>{title}</Text>
+				{info && onInfo && <InfoButton onPress={() => onInfo(info)} />}
+			</View>
 			{children}
 		</View>
+	);
+}
+
+function InfoButton({ onPress, dark = false }: { onPress: () => void; dark?: boolean }) {
+	return (
+		<Pressable style={[styles.infoButton, dark && styles.infoButtonDark]} onPress={onPress} hitSlop={8}>
+			<MaterialIcons name='info-outline' size={15} color={dark ? '#25354F' : '#8AB4F8'} />
+		</Pressable>
 	);
 }
 
@@ -335,6 +410,25 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		fontWeight: '800',
 	},
+	labelWithInfo: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 5,
+	},
+	infoButton: {
+		width: 22,
+		height: 22,
+		borderRadius: 11,
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: '#242424',
+		borderWidth: 1,
+		borderColor: '#333',
+	},
+	infoButtonDark: {
+		backgroundColor: 'rgba(11, 11, 11, 0.1)',
+		borderColor: 'rgba(11, 11, 11, 0.18)',
+	},
 	heroValue: {
 		color: '#0B0B0B',
 		fontSize: 44,
@@ -365,6 +459,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	heroMetricLabel: {
+		flex: 1,
 		color: '#aaa',
 		fontSize: 11,
 		fontWeight: '700',
@@ -401,6 +496,11 @@ const styles = StyleSheet.create({
 	miniCardCompact: {
 		minHeight: 88,
 	},
+	miniHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
 	miniValue: {
 		color: '#fff',
 		fontSize: 20,
@@ -422,9 +522,16 @@ const styles = StyleSheet.create({
 		marginBottom: 12,
 	},
 	sectionTitle: {
+		flex: 1,
 		color: '#fff',
 		fontSize: 16,
 		fontWeight: '800',
+	},
+	sectionHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		gap: 8,
 		marginBottom: 12,
 	},
 	pillRow: {
@@ -553,5 +660,50 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		marginTop: 4,
 		textAlign: 'center',
+	},
+	infoOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.72)',
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: 22,
+	},
+	infoCard: {
+		width: '100%',
+		maxWidth: 380,
+		backgroundColor: '#1A1A1A',
+		borderRadius: 14,
+		borderWidth: 1,
+		borderColor: '#333',
+		padding: 18,
+	},
+	infoHeader: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+		marginBottom: 10,
+	},
+	infoTitle: {
+		color: '#fff',
+		fontSize: 18,
+		fontWeight: '800',
+	},
+	infoBody: {
+		color: '#D8DEE8',
+		fontSize: 14,
+		lineHeight: 21,
+	},
+	infoCloseButton: {
+		alignSelf: 'flex-end',
+		marginTop: 16,
+		backgroundColor: '#8AB4F8',
+		borderRadius: 8,
+		paddingVertical: 9,
+		paddingHorizontal: 16,
+	},
+	infoCloseText: {
+		color: '#101113',
+		fontSize: 14,
+		fontWeight: '900',
 	},
 });

@@ -1,8 +1,28 @@
 import * as SQLite from 'expo-sqlite';
-
-export const db = SQLite.openDatabaseSync('dart.db');
+import { Platform } from 'react-native';
 
 const SCHEMA_VERSION = 2;
+
+type DatabaseLike = {
+	execSync: (source: string) => void;
+	runSync: (source: string, ...params: any[]) => { lastInsertRowId: number };
+	getAllSync: <T = unknown>(source: string, ...params: any[]) => T[];
+	getFirstSync: <T = unknown>(source: string, ...params: any[]) => T | null;
+};
+
+function createWebPreviewDb(): DatabaseLike {
+	return {
+		execSync: () => undefined,
+		runSync: () => ({ lastInsertRowId: 0 }),
+		getAllSync: () => [],
+		getFirstSync: source => {
+			if (source.includes('PRAGMA user_version')) return { user_version: SCHEMA_VERSION } as never;
+			return null;
+		},
+	};
+}
+
+export const db: DatabaseLike = Platform.OS === 'web' ? createWebPreviewDb() : SQLite.openDatabaseSync('dart.db');
 
 type TableInfoRow = {
 	cid: number;
@@ -38,6 +58,9 @@ type GameInput = {
 	forfeitScore?: number;
 	checkoutDarts?: number;
 };
+
+let initialized = false;
+let initializing = false;
 
 function getUserVersion() {
 	const row = db.getFirstSync('PRAGMA user_version;') as { user_version?: number } | null;
@@ -108,6 +131,9 @@ function runCompatibleMigrations() {
 }
 
 export function initDB() {
+	if (initialized || initializing) return;
+
+	initializing = true;
 	try {
 		ensureBaseTables();
 		runCompatibleMigrations();
@@ -115,8 +141,18 @@ export function initDB() {
 		if (getUserVersion() < SCHEMA_VERSION) {
 			setUserVersion(SCHEMA_VERSION);
 		}
+		initialized = true;
 	} catch (error) {
 		console.error('Database initialization failed:', error);
+		throw error;
+	} finally {
+		initializing = false;
+	}
+}
+
+export function ensureDBReady() {
+	if (!initialized) {
+		initDB();
 	}
 }
 
@@ -132,6 +168,8 @@ function getSimpleModeDarts(turns: number[], checkout?: string, checkoutDarts?: 
 }
 
 export function saveGame({ start, turns, hits, checkout, forfeited, forfeitScore, checkoutDarts }: GameInput) {
+	ensureDBReady();
+
 	const isAdvanced = Array.isArray(hits) && hits.length > 0;
 	const darts = isAdvanced ? hits.length : getSimpleModeDarts(turns, checkout, checkoutDarts);
 	const scored = turns.reduce((sum, turn) => sum + turn, 0);
@@ -155,9 +193,11 @@ export function saveGame({ start, turns, hits, checkout, forfeited, forfeitScore
 }
 
 export function fetchGames(): GameRow[] {
+	ensureDBReady();
 	return db.getAllSync('SELECT * FROM games ORDER BY id DESC;') as GameRow[];
 }
 
 export function clearGames() {
+	ensureDBReady();
 	db.runSync('DELETE FROM games;');
 }

@@ -12,9 +12,10 @@ export type NumpadProps = {
 	onCommitRaw?: (raw: string) => void;
 	onUndo: () => void;
 	extended?: boolean;
+	compact?: boolean;
 };
 
-export default function Numpad({ onCommit, onCommitRaw, onUndo, extended = false }: NumpadProps) {
+export default function Numpad({ onCommit, onCommitRaw, onUndo, extended = false, compact = false }: NumpadProps) {
 	const { strings } = useLanguage();
 	const [buffer, setBuffer] = useState<string>('');
 	const [showUndoConfirm, setShowUndoConfirm] = useState(false);
@@ -60,35 +61,36 @@ export default function Numpad({ onCommit, onCommitRaw, onUndo, extended = false
 	const keys = extended ? basicKeys.concat(extKeys) : basicKeys;
 
 	return (
-		<View style={styles.wrapper}>
-			<View style={[styles.displayCard, validation.isInvalid && styles.displayCardInvalid]}>
-				<Text style={styles.displayLabel}>{strings.roundScore}</Text>
-				<Text style={styles.display}>{buffer || '0'}</Text>
-				<Text style={[styles.displayHint, validation.isInvalid && styles.displayHintInvalid]}>
+		<View style={[styles.wrapper, compact && styles.wrapperCompact]}>
+			<View style={[styles.displayCard, compact && styles.displayCardCompact, validation.isInvalid && styles.displayCardInvalid]}>
+				<Text style={[styles.displayLabel, compact && styles.displayLabelCompact]}>{strings.roundScore}</Text>
+				<Text style={[styles.display, compact && styles.displayCompact]}>{buffer || '0'}</Text>
+				<Text style={[styles.displayHint, compact && styles.displayHintCompact, validation.isInvalid && styles.displayHintInvalid]}>
 					{validation.isInvalid ? strings.invalidTurnScore : strings.points}
 				</Text>
 			</View>
 
-			<View style={styles.grid}>
+			<View style={[styles.grid, compact && styles.gridCompact]}>
 				{keys.map(key => (
 					<Key
 						key={key}
 						onPress={() => push(key === 'SB' ? '25' : key === 'DB' ? '50' : key)}
 						dark={extended && (key === 'D' || key === 'T')}
-						wide={extended && (key === 'SB' || key === 'DB')}>
+						wide={extended && (key === 'SB' || key === 'DB')}
+						compact={compact}>
 						<Text style={styles.keyText}>{key}</Text>
 					</Key>
 				))}
 			</View>
 
-			<View style={styles.actionRow}>
-				<Key onPress={del} dark wide disabled={!buffer}>
+			<View style={[styles.actionRow, compact && styles.actionRowCompact]}>
+				<Key onPress={del} dark wide disabled={!buffer} compact={compact}>
 					<MaterialIcons name='backspace' size={23} color={buffer ? '#fff' : '#777'} />
 				</Key>
-				<Key onPress={requestUndoTurn} dark wide>
+				<Key onPress={requestUndoTurn} dark wide compact={compact}>
 					<MaterialIcons name='delete-sweep' size={25} color='#fff' />
 				</Key>
-				<Key onPress={commit} confirm wide disabled={!canCommit}>
+				<Key onPress={commit} confirm wide disabled={!canCommit} compact={compact}>
 					<MaterialIcons name='check-circle' size={22} color={canCommit ? '#0B0B0B' : '#A6DDB5'} />
 					<Text style={[styles.commitText, !canCommit && styles.commitTextDisabled]}>{strings.turn}</Text>
 				</Key>
@@ -123,6 +125,7 @@ function Key({
 	dark = false,
 	confirm = false,
 	disabled = false,
+	compact = false,
 	children,
 }: {
 	onPress: () => void;
@@ -130,6 +133,7 @@ function Key({
 	dark?: boolean;
 	confirm?: boolean;
 	disabled?: boolean;
+	compact?: boolean;
 	children: React.ReactNode;
 }) {
 	return (
@@ -138,6 +142,7 @@ function Key({
 			onPress={onPress}
 			style={({ pressed }) => [
 				styles.key,
+				compact && styles.keyCompact,
 				wide && styles.wide,
 				dark && styles.dark,
 				confirm && styles.confirm,
@@ -157,17 +162,29 @@ const styles = StyleSheet.create({
 		marginBottom: 32,
 		width: '100%',
 	},
+	wrapperCompact: {
+		gap: 8,
+		marginBottom: 12,
+	},
 	displayCard: {
 		width: '100%',
 		maxWidth: 320,
-		minHeight: 112,
+		minHeight: 78,
 		backgroundColor: '#1A1A1A',
-		borderRadius: 14,
+		borderRadius: 10,
 		borderWidth: 1,
 		borderColor: '#2A2A2A',
 		alignItems: 'center',
 		justifyContent: 'center',
-		padding: 12,
+		paddingVertical: 8,
+		paddingHorizontal: 10,
+	},
+	displayCardCompact: {
+		maxWidth: 304,
+		minHeight: 46,
+		borderRadius: 8,
+		paddingVertical: 4,
+		paddingHorizontal: 8,
 	},
 	displayCardInvalid: {
 		borderColor: '#D94A5A',
@@ -178,19 +195,31 @@ const styles = StyleSheet.create({
 		fontWeight: '800',
 		textTransform: 'uppercase',
 	},
+	displayLabelCompact: {
+		fontSize: 10,
+	},
 	display: {
 		color: '#FAFAFA',
-		fontSize: 48,
+		fontSize: 36,
 		fontWeight: '900',
 		letterSpacing: 0,
 		fontVariant: ['tabular-nums'],
-		marginTop: 4,
+		marginTop: 1,
+	},
+	displayCompact: {
+		fontSize: 23,
+		lineHeight: 26,
+		marginTop: 0,
 	},
 	displayHint: {
 		color: '#aaa',
 		fontSize: 12,
 		fontWeight: '700',
 		marginTop: 2,
+	},
+	displayHintCompact: {
+		fontSize: 10,
+		marginTop: 0,
 	},
 	displayHintInvalid: {
 		color: '#FF6B6B',
@@ -203,12 +232,20 @@ const styles = StyleSheet.create({
 		gap: 10,
 		justifyContent: 'center',
 	},
+	gridCompact: {
+		maxWidth: 304,
+		gap: 6,
+	},
 	actionRow: {
 		width: '100%',
 		maxWidth: 320,
 		flexDirection: 'row',
 		gap: 10,
 		justifyContent: 'center',
+	},
+	actionRowCompact: {
+		maxWidth: 304,
+		gap: 6,
 	},
 	key: {
 		width: 70,
@@ -219,6 +256,11 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		flexDirection: 'row',
 		gap: 6,
+	},
+	keyCompact: {
+		width: 54,
+		height: 43,
+		borderRadius: 9,
 	},
 	wide: {
 		flex: 1,

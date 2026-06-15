@@ -3,7 +3,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 import appConfig from '../app.json';
-import { db, GameRow } from './db';
+import { db, ensureDBReady, GameRow } from './db';
 
 const BACKUP_SCHEMA_VERSION = 1;
 
@@ -69,6 +69,7 @@ function isRecord(value: unknown): value is RawRecord {
 }
 
 function getBackupPayload(): BackupPayload {
+	ensureDBReady();
 	const games = db.getAllSync('SELECT * FROM games ORDER BY id ASC;') as GameBackupRow[];
 	const trainingSessions = db.getAllSync('SELECT * FROM training_sessions ORDER BY id ASC;') as TrainingSessionBackupRow[];
 
@@ -220,6 +221,7 @@ function insertTrainingSession(raw: RawRecord) {
 }
 
 export async function importBackupFromFile(uri: string, mode: ImportMode) {
+	ensureDBReady();
 	const raw = await new File(uri).text();
 	let parsed: unknown;
 	try {

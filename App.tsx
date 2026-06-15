@@ -11,7 +11,10 @@ import { initDB } from './lib/db';
 import { LanguageProvider, useLanguage } from './lib/LanguageContext';
 import { RootStackParamList } from './navigation/types';
 import GameScreen from './screens/GameScreen';
+import MultiplayerScreen from './screens/MultiplayerScreen';
 import NewGameScreen from './screens/NewGameScreen';
+import RoomGameScreen from './screens/RoomGameScreen';
+import RoomLobbyScreen from './screens/RoomLobbyScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import StatsDetailScreen from './screens/StatsDetailScreen';
 import StatsScreen from './screens/StatsScreen';
@@ -34,7 +37,10 @@ function PlayStack() {
 	return (
 		<Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
 			<Stack.Screen name='NewGame' component={NewGameScreen} />
-			<Stack.Screen name='Game' component={GameScreen} />
+			<Stack.Screen name='Game' component={GameScreen} options={{ gestureEnabled: false }} />
+			<Stack.Screen name='Multiplayer' component={MultiplayerScreen} />
+			<Stack.Screen name='RoomLobby' component={RoomLobbyScreen} options={{ gestureEnabled: false }} />
+			<Stack.Screen name='RoomGame' component={RoomGameScreen} options={{ gestureEnabled: false }} />
 		</Stack.Navigator>
 	);
 }

@@ -16,6 +16,7 @@
         "backgroundColor": "#121212"
       },
       "edgeToEdgeEnabled": true,
+      "usesCleartextTraffic": true,
       "package": "com.anonymous.dartscorer",
       "versionCode": 9
     },

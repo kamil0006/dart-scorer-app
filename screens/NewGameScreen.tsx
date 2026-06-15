@@ -2,7 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchGames, GameRow } from '../lib/db';
@@ -31,6 +31,8 @@ function getVariantMeta(variant: GameVariant, strings: ReturnType<typeof useLang
 
 export default function NewGameScreen({ navigation }: NewGameScreenProps) {
 	const { strings } = useLanguage();
+	const { height } = useWindowDimensions();
+	const compact = height < 680;
 	const [variant, setVariant] = useState<GameVariant>('501');
 	const [advanced, setAdvanced] = useState(false);
 	const [games, setGames] = useState<GameRow[]>([]);
@@ -63,62 +65,72 @@ export default function NewGameScreen({ navigation }: NewGameScreenProps) {
 	};
 
 	return (
-		<SafeAreaView style={styles.container}>
-			<View style={styles.header}>
-				<View>
-					<Text style={styles.eyebrow}>{strings.play}</Text>
-					<Text style={styles.title}>{strings.newGame}</Text>
-				</View>
-				<View style={styles.modeSwitch}>
-					<Pressable
-						style={[styles.modeOption, !advanced && styles.modeOptionActive]}
-						onPress={() => handleModeChange(false)}>
-						<MaterialIcons name='dialpad' size={14} color={!advanced ? '#101113' : '#8AB4F8'} />
-						<Text style={[styles.modeOptionText, !advanced && styles.modeOptionTextActive]} numberOfLines={1}>
-							{strings.simple}
-						</Text>
-					</Pressable>
-					<Pressable
-						style={[styles.modeOption, advanced && styles.modeOptionActive]}
-						onPress={() => handleModeChange(true)}>
-						<MaterialIcons name='track-changes' size={14} color={advanced ? '#101113' : '#8AB4F8'} />
-						<Text style={[styles.modeOptionText, advanced && styles.modeOptionTextActive]} numberOfLines={1}>
-							{strings.advanced}
-						</Text>
-					</Pressable>
-				</View>
-			</View>
-
-			<View style={styles.variantGrid}>
-				{VARIANTS.map(item => {
-					const active = item === variant;
-					return (
-						<Pressable key={item} style={[styles.variantCard, active && styles.variantCardActive]} onPress={() => setVariant(item)}>
-							<Text style={[styles.variantScore, active && styles.variantScoreActive]}>{item}</Text>
-							<Text style={[styles.variantMeta, active && styles.variantMetaActive]}>
-								{getVariantMeta(item, strings)}
+		<SafeAreaView style={styles.safeArea}>
+			<ScrollView
+				contentContainerStyle={[styles.container, compact && styles.containerCompact]}
+				showsVerticalScrollIndicator={false}
+				keyboardShouldPersistTaps='handled'>
+				<View style={styles.header}>
+					<View>
+						<Text style={styles.eyebrow}>{strings.play}</Text>
+						<Text style={[styles.title, compact && styles.titleCompact]}>{strings.newGame}</Text>
+					</View>
+					<View style={styles.modeSwitch}>
+						<Pressable
+							style={[styles.modeOption, !advanced && styles.modeOptionActive]}
+							onPress={() => handleModeChange(false)}>
+							<MaterialIcons name='dialpad' size={14} color={!advanced ? '#101113' : '#8AB4F8'} />
+							<Text style={[styles.modeOptionText, !advanced && styles.modeOptionTextActive]} numberOfLines={1}>
+								{strings.simple}
 							</Text>
 						</Pressable>
-					);
-				})}
-			</View>
-
-			<View style={styles.previewPanel}>
-				<View style={styles.previewHeader}>
-					<MaterialIcons name='insights' size={20} color='#8AB4F8' />
-					<Text style={styles.previewTitle}>{strings.stats}</Text>
+						<Pressable
+							style={[styles.modeOption, advanced && styles.modeOptionActive]}
+							onPress={() => handleModeChange(true)}>
+							<MaterialIcons name='track-changes' size={14} color={advanced ? '#101113' : '#8AB4F8'} />
+							<Text style={[styles.modeOptionText, advanced && styles.modeOptionTextActive]} numberOfLines={1}>
+								{strings.advanced}
+							</Text>
+						</Pressable>
+					</View>
 				</View>
-				<View style={styles.previewGrid}>
-					<PreviewMetric label={strings.games} value={games.length} />
-					<PreviewMetric label={strings.average} value={recentAverage} />
-					<PreviewMetric label={variant} value={selectedGames} />
-				</View>
-			</View>
 
-			<Pressable style={styles.startBtn} onPress={handleStart}>
-				<MaterialIcons name='play-arrow' size={28} color='#101113' />
-				<Text style={styles.startTxt}>{strings.startGame}</Text>
-			</Pressable>
+				<View style={styles.variantGrid}>
+					{VARIANTS.map(item => {
+						const active = item === variant;
+						return (
+							<Pressable key={item} style={[styles.variantCard, active && styles.variantCardActive, compact && styles.variantCardCompact]} onPress={() => setVariant(item)}>
+								<Text style={[styles.variantScore, active && styles.variantScoreActive, compact && styles.variantScoreCompact]}>{item}</Text>
+								<Text style={[styles.variantMeta, active && styles.variantMetaActive]}>
+									{getVariantMeta(item, strings)}
+								</Text>
+							</Pressable>
+						);
+					})}
+				</View>
+
+				<View style={[styles.previewPanel, compact && styles.previewPanelCompact]}>
+					<View style={styles.previewHeader}>
+						<MaterialIcons name='insights' size={20} color='#8AB4F8' />
+						<Text style={styles.previewTitle}>{strings.stats}</Text>
+					</View>
+					<View style={styles.previewGrid}>
+						<PreviewMetric label={strings.games} value={games.length} />
+						<PreviewMetric label={strings.average} value={recentAverage} />
+						<PreviewMetric label={variant} value={selectedGames} />
+					</View>
+				</View>
+
+				<Pressable style={[styles.startBtn, compact && styles.startBtnCompact]} onPress={handleStart}>
+					<MaterialIcons name='play-arrow' size={28} color='#101113' />
+					<Text style={styles.startTxt}>{strings.startGame}</Text>
+				</Pressable>
+
+				<Pressable style={[styles.multiplayerBtn, compact && styles.secondaryBtnCompact]} onPress={() => navigation.navigate('Multiplayer')}>
+					<MaterialIcons name='people' size={21} color='#60D394' />
+					<Text style={styles.multiplayerTxt}>{strings.mpMultiplayerWifi}</Text>
+				</Pressable>
+			</ScrollView>
 		</SafeAreaView>
 	);
 }
@@ -135,12 +147,20 @@ function PreviewMetric({ label, value }: { label: string; value: string | number
 }
 
 const styles = StyleSheet.create({
-	container: {
+	safeArea: {
 		flex: 1,
+		backgroundColor: '#121212',
+	},
+	container: {
+		flexGrow: 1,
 		backgroundColor: '#121212',
 		padding: 16,
 		justifyContent: 'center',
 		gap: 18,
+	},
+	containerCompact: {
+		gap: 10,
+		paddingVertical: 12,
 	},
 	header: {
 		flexDirection: 'row',
@@ -159,6 +179,9 @@ const styles = StyleSheet.create({
 		fontSize: 32,
 		fontWeight: '900',
 		marginTop: 2,
+	},
+	titleCompact: {
+		fontSize: 24,
 	},
 	modeSwitch: {
 		flexDirection: 'row',
@@ -210,6 +233,9 @@ const styles = StyleSheet.create({
 		backgroundColor: '#8AB4F8',
 		borderColor: '#8AB4F8',
 	},
+	variantCardCompact: {
+		minHeight: 76,
+	},
 	variantScore: {
 		color: '#fff',
 		fontSize: 34,
@@ -217,6 +243,9 @@ const styles = StyleSheet.create({
 	},
 	variantScoreActive: {
 		color: '#101113',
+	},
+	variantScoreCompact: {
+		fontSize: 26,
 	},
 	variantMeta: {
 		color: '#9AA4AF',
@@ -234,6 +263,9 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderColor: '#2A2A2A',
 		padding: 14,
+	},
+	previewPanelCompact: {
+		padding: 10,
 	},
 	previewHeader: {
 		flexDirection: 'row',
@@ -277,9 +309,31 @@ const styles = StyleSheet.create({
 		borderRadius: 8,
 		paddingVertical: 16,
 	},
+	startBtnCompact: {
+		paddingVertical: 11,
+	},
 	startTxt: {
 		color: '#101113',
 		fontSize: 17,
+		fontWeight: '900',
+	},
+	multiplayerBtn: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 8,
+		backgroundColor: '#1A1A1A',
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#1D3A2A',
+		paddingVertical: 14,
+	},
+	secondaryBtnCompact: {
+		paddingVertical: 10,
+	},
+	multiplayerTxt: {
+		color: '#60D394',
+		fontSize: 15,
 		fontWeight: '900',
 	},
 });

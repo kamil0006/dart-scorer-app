@@ -15,7 +15,7 @@ const MULTIPLIERS: { label: string; value: 1 | 2 | 3 }[] = [
 	{ label: 'T', value: 3 },
 ];
 
-export default function AdvancedThrowPad({ onThrow }: Props) {
+export default function AdvancedThrowPad({ onThrow, onUndo }: Props) {
 	const [mult, setMult] = useState<1 | 2 | 3>(1);
 
 	const add = (dart: Dart) => onThrow(dart);
@@ -37,6 +37,9 @@ export default function AdvancedThrowPad({ onThrow }: Props) {
 					<SpecialButton label='25' icon='gps-fixed' onPress={() => add({ bed: 25, m: 1 })} />
 					<SpecialButton label='50' icon='adjust' onPress={() => add({ bed: 50, m: 1 })} />
 					<SpecialButton label='0' icon='close' danger onPress={() => onThrow({ bed: 0, m: 1 })} />
+					<Pressable style={styles.undoButton} onPress={onUndo}>
+						<MaterialIcons name='undo' size={18} color='#fff' />
+					</Pressable>
 				</View>
 			</View>
 
@@ -124,6 +127,14 @@ const styles = StyleSheet.create({
 	},
 	specialButtonDanger: {
 		backgroundColor: '#B00020',
+	},
+	undoButton: {
+		width: 46,
+		minHeight: 42,
+		borderRadius: 8,
+		backgroundColor: '#2A2A2A',
+		alignItems: 'center',
+		justifyContent: 'center',
 	},
 	specialText: {
 		color: '#fff',

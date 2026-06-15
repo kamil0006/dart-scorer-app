@@ -7,12 +7,23 @@ import {
 	ScrollView,
 	StyleSheet,
 	Text,
+	TextInput,
 	View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { exportBackupToFile, importBackupFromFile, pickBackupFile, shareBackup } from '../lib/dataBackup';
 import { useLanguage } from '../lib/LanguageContext';
-import { getLanguage, Language } from '../lib/settings';
+import {
+	getDisplayPlayerName,
+	getDisplayServerUrl,
+	getDefaultDisplayServerUrl,
+	getHorizontalTurnsHistory,
+	getLanguage,
+	Language,
+	setDisplayPlayerName,
+	setDisplayServerUrl,
+	setHorizontalTurnsHistory,
+} from '../lib/settings';
 
 type SettingsModalAction = {
 	label: string;
@@ -22,6 +33,11 @@ type SettingsModalAction = {
 
 export default function SettingsScreen() {
 	const [currentLanguage, setCurrentLanguage] = useState<Language>('pl');
+	const [horizontalTurnsHistory, setHorizontalTurnsHistoryState] = useState(false);
+	const [displayServerUrl, setDisplayServerUrlState] = useState(getDefaultDisplayServerUrl());
+	const [displayPlayerName, setDisplayPlayerNameState] = useState('Gracz 1');
+	const [showDisplaySetup, setShowDisplaySetup] = useState(false);
+	const [showBackupSetup, setShowBackupSetup] = useState(false);
 	const [backupBusy, setBackupBusy] = useState<'export' | 'import' | null>(null);
 	const [lastBackupUri, setLastBackupUri] = useState<string | null>(null);
 	const [customModalVisible, setCustomModalVisible] = useState(false);
@@ -32,12 +48,30 @@ export default function SettingsScreen() {
 
 	useEffect(() => {
 		getLanguage().then(setCurrentLanguage);
+		getHorizontalTurnsHistory().then(setHorizontalTurnsHistoryState);
+		getDisplayServerUrl().then(setDisplayServerUrlState);
+		getDisplayPlayerName().then(setDisplayPlayerNameState);
 	}, []);
 
 	const handleLanguageChange = async (lang: Language) => {
 		if (lang === currentLanguage) return;
 		setCurrentLanguage(lang);
 		await changeLanguage(lang);
+	};
+
+	const handleTurnHistoryLayoutChange = async (enabled: boolean) => {
+		setHorizontalTurnsHistoryState(enabled);
+		await setHorizontalTurnsHistory(enabled);
+	};
+
+	const handleDisplayUrlChange = async (value: string) => {
+		setDisplayServerUrlState(value);
+		await setDisplayServerUrl(value);
+	};
+
+	const handlePlayerOneChange = async (value: string) => {
+		setDisplayPlayerNameState(value);
+		await setDisplayPlayerName(value);
 	};
 
 	const openCustomModal = (title: string, message: string, actions: SettingsModalAction[]) => {
@@ -148,6 +182,96 @@ ${strings.trainingSessions}: ${result.importedTrainingSessions}`,
 						</View>
 					</View>
 
+					<View style={styles.settingRow}>
+						<View style={styles.settingInfo}>
+							<Text style={styles.settingLabel}>{strings.turnHistoryLayout}</Text>
+							<Text style={styles.settingDescription}>{strings.turnHistoryLayoutDescription}</Text>
+						</View>
+						<View style={styles.layoutButtons}>
+							<Pressable
+								style={[styles.layoutButton, !horizontalTurnsHistory && styles.layoutButtonActive]}
+								onPress={() => handleTurnHistoryLayoutChange(false)}>
+								<Text style={[styles.layoutButtonText, !horizontalTurnsHistory && styles.layoutButtonTextActive]} numberOfLines={1}>
+									{strings.turnHistoryLayoutWrapped}
+								</Text>
+							</Pressable>
+							<Pressable
+								style={[styles.layoutButton, horizontalTurnsHistory && styles.layoutButtonActive]}
+								onPress={() => handleTurnHistoryLayoutChange(true)}>
+								<Text style={[styles.layoutButtonText, horizontalTurnsHistory && styles.layoutButtonTextActive]} numberOfLines={1}>
+									{strings.turnHistoryLayoutScrollable}
+								</Text>
+							</Pressable>
+						</View>
+					</View>
+
+					<View style={styles.displaySection}>
+						<View style={styles.backupTitleRow}>
+							<MaterialIcons name='desktop-windows' size={22} color='#8AB4F8' />
+							<Text style={styles.settingLabel}>{strings.displayMatch}</Text>
+						</View>
+						<Text style={styles.settingDescription}>{strings.displayMatchDescription}</Text>
+
+						<Pressable style={styles.setupToggleRow} onPress={() => setShowDisplaySetup(v => !v)}>
+							<MaterialIcons name='help-outline' size={16} color='#8AB4F8' />
+							<Text style={styles.setupToggleText}>{strings.displaySetupHowItWorks}</Text>
+							<MaterialIcons
+								name={showDisplaySetup ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+								size={20}
+								color='#8AB4F8'
+							/>
+						</Pressable>
+
+						{showDisplaySetup && (
+							<View style={styles.howItWorksBox}>
+								{([
+									strings.displaySetupStep1,
+									strings.displaySetupStep2,
+									strings.displaySetupStep3,
+									strings.displaySetupStep4,
+									strings.displaySetupStep5,
+									strings.displaySetupStep6,
+									strings.displaySetupStep7,
+									strings.displaySetupStep8,
+								] as string[]).map((step, i) => (
+									<Text
+										key={i}
+										style={[styles.howItWorksStep, i === 7 && styles.setupStepWarning]}>
+										{step}
+									</Text>
+								))}
+							</View>
+						)}
+
+						<View style={styles.inputGroup}>
+							<Text style={styles.inputLabel}>{strings.displayLaptopAddress}</Text>
+							<TextInput
+								value={displayServerUrl}
+								onChangeText={handleDisplayUrlChange}
+								autoCapitalize='none'
+								autoCorrect={false}
+								keyboardType='url'
+								placeholder='http://10.0.0.42:3000'
+								placeholderTextColor='#777'
+								style={styles.textInput}
+							/>
+							{isLocalhostAddress(displayServerUrl) && (
+								<Text style={styles.inputWarning}>{strings.displayLocalhostWarning}</Text>
+							)}
+						</View>
+
+						<View style={styles.inputGroup}>
+							<Text style={styles.inputLabel}>{strings.displayPlayerName}</Text>
+							<TextInput
+								value={displayPlayerName}
+								onChangeText={handlePlayerOneChange}
+								placeholder={strings.displayPlayerNamePlaceholder}
+								placeholderTextColor='#777'
+								style={styles.textInput}
+							/>
+						</View>
+					</View>
+
 					<View style={styles.backupSection}>
 						<View style={styles.backupTitleRow}>
 							<MaterialIcons name='cloud-sync' size={22} color='#8AB4F8' />
@@ -155,13 +279,24 @@ ${strings.trainingSessions}: ${result.importedTrainingSessions}`,
 						</View>
 						<Text style={styles.settingDescription}>{strings.dataBackupDescription}</Text>
 
-						<View style={styles.howItWorksBox}>
-							<Text style={styles.howItWorksTitle}>{strings.backupHowItWorks}</Text>
-							<Text style={styles.howItWorksStep}>{strings.backupStep1}</Text>
-							<Text style={styles.howItWorksStep}>{strings.backupStep2}</Text>
-							<Text style={styles.howItWorksStep}>{strings.backupStep3}</Text>
-							<Text style={styles.howItWorksStep}>{strings.backupStep4}</Text>
-						</View>
+						<Pressable style={styles.setupToggleRow} onPress={() => setShowBackupSetup(v => !v)}>
+							<MaterialIcons name='help-outline' size={16} color='#8AB4F8' />
+							<Text style={styles.setupToggleText}>{strings.backupHowItWorks}</Text>
+							<MaterialIcons
+								name={showBackupSetup ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+								size={20}
+								color='#8AB4F8'
+							/>
+						</Pressable>
+
+						{showBackupSetup && (
+							<View style={styles.howItWorksBox}>
+								<Text style={styles.howItWorksStep}>{strings.backupStep1}</Text>
+								<Text style={styles.howItWorksStep}>{strings.backupStep2}</Text>
+								<Text style={styles.howItWorksStep}>{strings.backupStep3}</Text>
+								<Text style={styles.howItWorksStep}>{strings.backupStep4}</Text>
+							</View>
+						)}
 
 						<View style={styles.backupButtons}>
 							<Pressable
@@ -224,6 +359,10 @@ ${strings.trainingSessions}: ${result.importedTrainingSessions}`,
 			</Modal>
 		</SafeAreaView>
 	);
+}
+
+function isLocalhostAddress(value: string) {
+	return /(^|\/\/)(localhost|127\.0\.0\.1)(:|\/|$)/i.test(value.trim());
 }
 
 const styles = StyleSheet.create({
@@ -296,8 +435,108 @@ const styles = StyleSheet.create({
 		color: '#000',
 		fontWeight: '600',
 	},
+	layoutButtons: {
+		flexDirection: 'row',
+		gap: 6,
+		maxWidth: 170,
+	},
+	layoutButton: {
+		flex: 1,
+		minHeight: 36,
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#444',
+		backgroundColor: '#232323',
+		alignItems: 'center',
+		justifyContent: 'center',
+		paddingHorizontal: 8,
+	},
+	layoutButtonActive: {
+		backgroundColor: '#8AB4F8',
+		borderColor: '#8AB4F8',
+	},
+	layoutButtonText: {
+		color: '#ccc',
+		fontSize: 12,
+		fontWeight: '700',
+	},
+	layoutButtonTextActive: {
+		color: '#101113',
+	},
 	backupSection: {
 		paddingTop: 20,
+	},
+	displaySection: {
+		paddingTop: 20,
+		paddingBottom: 20,
+		borderBottomWidth: 1,
+		borderBottomColor: '#333',
+	},
+	displayToggleRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		gap: 12,
+		marginTop: 16,
+	},
+	displayToggle: {
+		minWidth: 96,
+		minHeight: 36,
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#444',
+		backgroundColor: '#232323',
+		alignItems: 'center',
+		justifyContent: 'center',
+		paddingHorizontal: 12,
+	},
+	displayToggleActive: {
+		backgroundColor: '#8AB4F8',
+		borderColor: '#8AB4F8',
+	},
+	displayToggleText: {
+		color: '#ccc',
+		fontSize: 12,
+		fontWeight: '900',
+	},
+	displayToggleTextActive: {
+		color: '#101113',
+	},
+	inputGroup: {
+		marginTop: 14,
+	},
+	inputRow: {
+		flexDirection: 'row',
+		gap: 10,
+		marginTop: 12,
+	},
+	inputHalf: {
+		flex: 1,
+	},
+	inputLabel: {
+		color: '#8AB4F8',
+		fontSize: 12,
+		fontWeight: '900',
+		textTransform: 'uppercase',
+		marginBottom: 6,
+	},
+	textInput: {
+		minHeight: 44,
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#333',
+		backgroundColor: '#101113',
+		color: '#fff',
+		paddingHorizontal: 12,
+		fontSize: 14,
+		fontWeight: '700',
+	},
+	inputWarning: {
+		color: '#FFB4BE',
+		fontSize: 12,
+		fontWeight: '700',
+		lineHeight: 17,
+		marginTop: 8,
 	},
 	backupTitleRow: {
 		flexDirection: 'row',
@@ -437,5 +676,28 @@ const styles = StyleSheet.create({
 	},
 	customModalButtonTextPrimary: {
 		color: '#111',
+	},
+	setupToggleRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 6,
+		marginTop: 12,
+		paddingVertical: 8,
+		paddingHorizontal: 10,
+		backgroundColor: '#23272E',
+		borderRadius: 8,
+		borderWidth: 1,
+		borderColor: '#2A3A4A',
+	},
+	setupToggleText: {
+		flex: 1,
+		color: '#8AB4F8',
+		fontSize: 13,
+		fontWeight: '700',
+	},
+	setupStepWarning: {
+		color: '#FFB4BE',
+		fontWeight: '700',
+		marginTop: 4,
 	},
 });

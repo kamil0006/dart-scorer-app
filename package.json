@@ -3,6 +3,7 @@
   "version": "1.10.0",
   "scripts": {
     "start": "expo start",
+    "display": "npm --prefix display-server start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",

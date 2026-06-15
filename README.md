@@ -1,90 +1,136 @@
 # Dart Scorer
 
-A React Native / Expo mobile app for steel darts scoring, training, statistics, and local data backup.
+A React Native / Expo mobile app for steel darts scoring, training, statistics, and local multiplayer over WiFi.
 
 ## Overview
 
-`Dart Scorer` is built for local dart sessions on Android. It supports classic `301`, `401`, and `501` games, simple score entry, advanced dart-by-dart input, checkout suggestions, training sessions, and long-term statistics.
+`Dart Scorer` is built for local dart sessions on Android. It supports classic `301`, `401`, and `501` games, simple score entry, advanced dart-by-dart input, checkout suggestions, real-time WiFi multiplayer, a laptop scoreboard display, training sessions, and long-term statistics.
 
-The app stores data locally on the device and can export/import a JSON backup.
+All game data is stored locally on the device and can be exported or imported as a JSON backup.
 
 ## Features
 
-- **Game variants**: `301`, `401`, `501`
-- **Simple scoring mode**: fast turn score entry
-- **Advanced scoring mode**: dart-by-dart input, dartboard picker, heatmap
-- **Checkout suggestions**: validated checkout table from `2` to `170`
-- **Checkout darts modal**: accurate final-turn dart count for averages
-- **Game history**: completed and forfeited games with detail view
-- **Game details**:
-  - remaining score after each turn
-  - best turn
-  - average turn
-  - `100+` visits
-  - turns below `45`
-  - checkout value and path
-  - read-only heatmap for advanced games
-- **Statistics**:
-  - PDC-style three-dart average
-  - score ranges
-  - mode comparison
-  - checkout profile
-  - trends and game length
-- **Training modes**:
-  - target practice
-  - checkout practice
-  - classic clock
-  - double clock
-  - triple clock
-  - jump clock
-  - penalty clock
-  - Bob's 27
-- **Training history**:
-  - filters by mode
-  - Bob's 27 win/loss status
-  - swipe-to-delete sessions
-- **Backup / restore**:
-  - export games and training sessions to JSON
-  - import by merge or replace
-- **Localization**:
-  - Polish
-  - English
+### Game modes
+
+- **Simple scoring mode** — fast turn score entry
+- **Advanced scoring mode** — dart-by-dart input, dartboard picker, heatmap
+- **Game variants** — `301`, `401`, `501`
+- **Checkout suggestions** — validated checkout table from `2` to `170`
+- **Checkout darts modal** — accurate final-turn dart count for correct averages
+
+### WiFi multiplayer
+
+- Create a room with a 4-digit code
+- Opponent joins by entering the code
+- Host picks who starts the first leg (decided by bull throw)
+- Leg starts alternate automatically for the rest of the match
+- Full sets/legs format with undo support
+- Real-time sync over local WiFi via SSE
+
+### Game history
+
+- Completed and forfeited games with detail view
+- Remaining score after each turn
+- Best turn, three-dart average, `100+` visits, turns below `45`
+- Checkout value and path
+- Read-only heatmap for advanced-mode games
+
+### Statistics
+
+- PDC-style three-dart average
+- Score range distribution
+- Simple vs advanced mode comparison
+- Checkout profile
+- Trends and average game length
+- Average trend chart (last 30 games, SVG line)
+
+### Training
+
+Eight modes:
+
+- Target practice
+- Checkout practice
+- Classic clock
+- Double clock
+- Triple clock
+- Jump clock
+- Penalty clock
+- Bob's 27
+
+Training history with mode filter, Bob's 27 win/loss status, and swipe-to-delete.
+
+### Backup / restore
+
+- Export games and training sessions to JSON
+- Import by merge or replace
+- Works across devices
+
+### Localization
+
+- Polish
+- English
+
+---
 
 ## Tech Stack
 
-- Expo SDK `55`
-- React Native `0.83`
-- React `19.2`
-- TypeScript `5.9`
-- SQLite via `expo-sqlite`
-- AsyncStorage for app settings
-- React Navigation
-- Hermes on Android release builds
+| | |
+|---|---|
+| Expo SDK | `55` |
+| React Native | `0.83.6` |
+| React | `19.2.0` |
+| TypeScript | `~5.9` |
+| SQLite | `expo-sqlite` |
+| Settings | `AsyncStorage` |
+| Navigation | React Navigation (stack + bottom tabs) |
+| Charts | `react-native-svg` `15.15.3` |
+| JS engine | Hermes (Android release builds) |
+
+---
 
 ## Project Structure
 
 ```text
 dart-scorer/
-|-- android/
-|-- components/
-|-- database/
-|-- hooks/
-|-- lib/
-|   |-- checkout.ts
-|   |-- dartsStats.ts
-|   |-- dataBackup.ts
-|   |-- db.ts
-|   |-- gameVariant.ts
-|   |-- localization.ts
-|   `-- settings.ts
-|-- navigation/
-|-- screens/
-|-- tests/
-|-- App.tsx
-|-- index.js
-|-- app.json
-`-- package.json
+├── android/                  native Android project
+├── assets/
+├── components/
+│   ├── common/               shared UI components
+│   ├── game/                 turn history, score board, throw pad
+│   └── stats/                summary modal, trend chart, heatmap
+├── database/                 SQLite repositories (games, training, stats)
+├── display-server/           standalone Node.js scoreboard server
+│   ├── public/               browser display page (HTML/CSS/JS)
+│   └── server.js
+├── hooks/                    useDartGame, useLanguage
+├── lib/
+│   ├── checkout.ts
+│   ├── dartsStats.ts
+│   ├── dataBackup.ts
+│   ├── db.ts
+│   ├── externalDisplay.ts
+│   ├── gameVariant.ts
+│   ├── localization.ts
+│   └── settings.ts
+├── navigation/
+├── screens/
+│   ├── GameScreen.tsx        single-player game
+│   ├── NewGameScreen.tsx     game setup (single / multiplayer)
+│   ├── MultiplayerScreen.tsx create or join a WiFi room
+│   ├── RoomLobbyScreen.tsx   waiting room + who-starts picker
+│   ├── RoomGameScreen.tsx    live multiplayer game
+│   ├── StatsScreen.tsx
+│   ├── StatsDetailScreen.tsx
+│   ├── TrainingScreen.tsx
+│   └── SettingsScreen.tsx
+├── tests/
+├── App.tsx
+├── index.js
+├── app.json
+└── package.json
 ```
+
+---
 
 ## Getting Started
 
@@ -93,7 +139,7 @@ dart-scorer/
 - Node.js `18+`
 - npm
 - Android Studio / Android SDK for Android builds
-- USB debugging enabled on Android device for direct installation
+- USB debugging enabled on an Android device for direct installation
 
 ### Install
 
@@ -119,6 +165,53 @@ Web:
 npm run web
 ```
 
+---
+
+## Display Server (laptop scoreboard)
+
+A lightweight Node.js HTTP server that shows a live scoreboard in any browser. It also handles the WiFi multiplayer room API.
+
+### Start
+
+```bash
+npm run display
+```
+
+Open in a browser on the same machine:
+
+```
+http://localhost:3000/display
+```
+
+### How to connect the phone
+
+1. Start the display server on the laptop.
+2. Open `http://localhost:3000/display` in a browser — it waits in standby.
+3. Find the laptop's local IP address (e.g. `http://10.0.0.42:3000`).
+4. In the app go to **Settings → Display Server** and enter the laptop address.
+5. Start a game — the scoreboard updates live.
+
+For full step-by-step instructions see **Settings → Display server setup** in the app.
+
+### API
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/display` | Browser scoreboard page |
+| `GET` | `/api/state` | Current display state |
+| `POST` | `/api/state` | Update display state |
+| `POST` | `/api/reset` | Reset display state |
+| `GET` | `/api/events` | SSE stream for display |
+| `GET` | `/api/rooms` | List active rooms |
+| `POST` | `/api/rooms` | Create a multiplayer room |
+| `POST` | `/api/rooms/:code/join` | Join a room |
+| `POST` | `/api/rooms/:code/start` | Start the match (host only) |
+| `POST` | `/api/rooms/:code/turn` | Submit a turn |
+| `POST` | `/api/rooms/:code/undo` | Undo last turn (host only) |
+| `GET` | `/api/rooms/:code/events` | SSE stream for a room |
+
+---
+
 ## Quality Checks
 
 Run before committing:
@@ -129,6 +222,27 @@ npm test
 npm run lint
 ```
 
+---
+
+## Tests
+
+The test suite covers:
+
+- Checkout chart validity
+- Checkout-ending dart rules
+- Turn resolution and busts
+- PDC-style average calculation
+- Stored data parsing
+- Checkout statistics helpers
+
+Run:
+
+```bash
+npm test
+```
+
+---
+
 ## Android Release Build
 
 Current app identity:
@@ -136,7 +250,7 @@ Current app identity:
 - Display name: `Dart Scorer`
 - Android package: `com.anonymous.dartscorer`
 - Version: `1.10.0`
-- Android versionCode: `9`
+- versionCode: `9`
 
 Build APK:
 
@@ -154,10 +268,10 @@ android/app/build/outputs/apk/release/app-release.apk
 Install with ADB:
 
 ```powershell
-& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" install -r C:\Users\Kamil\dart-scorer\android\app\build\outputs\apk\release\app-release.apk
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" install -r android\app\build\outputs\apk\release\app-release.apk
 ```
 
-If build cache causes issues:
+Clean build if cache causes issues:
 
 ```powershell
 cd android
@@ -165,81 +279,60 @@ cd android
 .\gradlew.bat assembleRelease
 ```
 
-## Android Build Notes
+### Build notes
 
 - `index.js` is required for native release bundling.
 - `android/app/build.gradle` points Hermes to `node_modules/hermes-compiler/hermesc/...`.
 - `MainApplication.kt` uses `DefaultReactHost` for the current React Native / Expo setup.
 - Before production publishing, replace the debug signing config with a proper release keystore.
 
+---
+
 ## Versioning
 
-Before a release, keep these aligned:
+Keep these aligned before every release:
 
-- `package.json` -> `version`
-- `app.json` -> `expo.version`
-- `app.json` -> `expo.android.versionCode`
-- `android/app/build.gradle` -> `versionName`
-- `android/app/build.gradle` -> `versionCode`
+- `package.json` → `version`
+- `app.json` → `expo.version`
+- `app.json` → `expo.android.versionCode`
+- `android/app/build.gradle` → `versionName`
+- `android/app/build.gradle` → `versionCode`
 
-Increase `versionCode` for every Android release.
+Increment `versionCode` for every Android release.
+
+---
 
 ## Data Storage
 
-The app stores data locally in SQLite.
+All data is stored locally in SQLite on the device.
 
 ### `games`
 
-- start score
-- turns
-- hits for advanced mode
-- darts count
-- scored points
-- three-dart average
-- checkout path
-- forfeit status
-- remaining score on forfeit
+- Start score, game mode
+- Turns with individual dart hits (advanced mode)
+- Darts thrown count
+- Three-dart average
+- Checkout path
+- Forfeit status and remaining score on forfeit
 
 ### `training_sessions`
 
-- training mode
-- targets practiced
-- target results
-- hits/misses
-- duration
-- success rate
+- Training mode
+- Targets practiced, hits/misses per target
+- Duration
+- Success rate
+- Bob's 27 score and win/loss status
 
-## Backup / Restore
-
-In Settings:
-
-1. Export data to JSON.
-2. Save or share the file.
-3. Import it on the same or another device.
-4. Choose merge or replace.
-
-## Tests
-
-The test suite covers:
-
-- checkout chart validity
-- checkout-ending dart rules
-- turn resolution and busts
-- PDC-style average calculation
-- stored data parsing
-- checkout statistics helpers
-
-Run:
-
-```bash
-npm test
-```
+---
 
 ## Notes
 
-- The app is currently focused on local/offline use.
+- The app is focused on local / offline use. No account or internet connection required.
+- WiFi multiplayer runs entirely on the local network via the display server.
 - Android release build configuration is included, but production signing still needs a real keystore.
 - Backup is JSON-based and intended for manual migration between devices.
+
+---
 
 ## Support
 
