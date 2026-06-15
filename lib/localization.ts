@@ -348,6 +348,8 @@ export interface LocalizedStrings {
 	mpEnterName: string;
 	mpServerError: string;
 	mpServerErrorMsg: string;
+	mpServerConnected: string;
+	mpServerHint: string;
 	mpRoomCodeLength: string;
 	mpJoinError: string;
 	mpWifiSameNetwork: string;
@@ -707,6 +709,8 @@ const polishStrings: LocalizedStrings = {
 	mpEnterName: 'Wpisz swoje imię',
 	mpServerError: 'Błąd połączenia',
 	mpServerErrorMsg: 'Nie można połączyć się z serwerem. Sprawdź czy oba urządzenia są w tej samej sieci WiFi.',
+	mpServerConnected: 'Połączono z serwerem',
+	mpServerHint: 'Wpisz adres laptopa z serwerem, np. http://192.168.1.50:3000',
 	mpRoomCodeLength: 'Kod pokoju musi mieć dokładnie 4 znaki',
 	mpJoinError: 'Nie można dołączyć do pokoju',
 	mpWifiSameNetwork: 'WiFi · ta sama sieć',
@@ -1041,6 +1045,8 @@ const englishStrings: LocalizedStrings = {
 	mpEnterName: 'Enter your name',
 	mpServerError: 'Connection error',
 	mpServerErrorMsg: 'Could not connect to server. Make sure both devices are on the same WiFi network.',
+	mpServerConnected: 'Connected to server',
+	mpServerHint: 'Enter the laptop server address, e.g. http://192.168.1.50:3000',
 	mpRoomCodeLength: 'Room code must be exactly 4 characters',
 	mpJoinError: 'Cannot join the room',
 	mpWifiSameNetwork: 'WiFi · same network',

@@ -39,11 +39,10 @@ export async function setLanguage(lang: Language) {
 }
 
 export async function getDisplayServerUrl() {
-	const fallbackUrl = getDefaultDisplayServerUrl();
 	const savedUrl = await AsyncStorage.getItem(DISPLAY_SERVER_URL_KEY);
 
 	if (!savedUrl || isLocalhostUrl(savedUrl)) {
-		return fallbackUrl;
+		return '';
 	}
 
 	return savedUrl;

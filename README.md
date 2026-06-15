@@ -249,8 +249,8 @@ Current app identity:
 
 - Display name: `Dart Scorer`
 - Android package: `com.anonymous.dartscorer`
-- Version: `1.10.0`
-- versionCode: `9`
+- Version: `1.11.2`
+- versionCode: `13`
 
 Build APK:
 

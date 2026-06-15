@@ -2,7 +2,7 @@
   "expo": {
     "name": "Dart Scorer",
     "slug": "dart-scorer",
-    "version": "1.10.0",
+    "version": "1.11.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "dartscorer",
@@ -18,7 +18,7 @@
       "edgeToEdgeEnabled": true,
       "usesCleartextTraffic": true,
       "package": "com.anonymous.dartscorer",
-      "versionCode": 9
+      "versionCode": 13
     },
     "plugins": [
       [
