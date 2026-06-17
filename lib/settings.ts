@@ -113,7 +113,7 @@ function isLocalhostUrl(value: string) {
 	return /(^|\/\/)(localhost|127\.0\.0\.1)(:|\/|$)/i.test(value.trim());
 }
 
-function uniqueUrls(values: Array<string | null | undefined>) {
+function uniqueUrls(values: (string | null | undefined)[]) {
 	const urls: string[] = [];
 	for (const value of values) {
 		const trimmed = value?.trim();

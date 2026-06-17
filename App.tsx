@@ -1,14 +1,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { DarkTheme, NavigationContainer } from '@react-navigation/native';
+import { createNavigationContainerRef, DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'react-native';
-import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import OnboardingOverlay from './components/OnboardingOverlay';
 import { initDB } from './lib/db';
 import { LanguageProvider, useLanguage } from './lib/LanguageContext';
+import { OnboardingProvider } from './lib/OnboardingContext';
 import { RootStackParamList } from './navigation/types';
 import GameScreen from './screens/GameScreen';
 import MultiplayerScreen from './screens/MultiplayerScreen';
@@ -19,6 +20,8 @@ import SettingsScreen from './screens/SettingsScreen';
 import StatsDetailScreen from './screens/StatsDetailScreen';
 import StatsScreen from './screens/StatsScreen';
 import TrainingScreen from './screens/TrainingScreen';
+
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 const StatsStack = createNativeStackNavigator<RootStackParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -56,6 +59,7 @@ function AppContent() {
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<StatusBar barStyle='light-content' />
 			<NavigationContainer
+				ref={navigationRef}
 				theme={{
 					...DarkTheme,
 					colors: {
@@ -111,6 +115,7 @@ function AppContent() {
 					/>
 				</Tabs.Navigator>
 			</NavigationContainer>
+			<OnboardingOverlay />
 		</GestureHandlerRootView>
 	);
 }
@@ -118,7 +123,9 @@ function AppContent() {
 export default function App() {
 	return (
 		<LanguageProvider>
-			<AppContent />
+			<OnboardingProvider navigationRef={navigationRef}>
+				<AppContent />
+			</OnboardingProvider>
 		</LanguageProvider>
 	);
 }

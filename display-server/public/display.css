@@ -537,41 +537,48 @@ html, body {
 	top: 20px; bottom: 20px; width: 1px;
 	background: linear-gradient(180deg, transparent, rgba(255,255,255,.12) 20%, rgba(255,255,255,.12) 80%, transparent);
 }
-.center-card {
-	position: relative;
+.match-score-center {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: clamp(3px, .56vh, 6px);
-	padding: clamp(8px, 1.67vh, 18px) 0;
-	width: clamp(54px, 5.21vw, 100px);
-	border-radius: clamp(8px, .83vw, 16px);
-	background: rgba(10,14,12,.85);
-	border: 1px solid rgba(255,255,255,.08);
+	gap: clamp(8px, 1.3vh, 16px);
+	position: relative;
+	z-index: 1;
 }
-.center-card-label {
-	font-size: clamp(8px, .625vw, 12px);
-	font-weight: 800;
-	letter-spacing: .15em;
-	color: rgba(255,255,255,.4);
+.msc-row {
+	display: flex;
+	align-items: center;
+	gap: clamp(6px, .83vw, 16px);
 }
-.center-card-value {
+.msc-val {
 	font-family: 'Saira Condensed', sans-serif;
-	font-size: clamp(18px, 2.08vw, 40px);
+	font-size: clamp(28px, 3.13vw, 60px);
 	font-weight: 800;
 	line-height: 1;
+	color: var(--accent);
+	min-width: clamp(22px, 2.08vw, 40px);
+	text-align: center;
 }
-.center-card-value--accent { color: var(--accent); }
-.center-card-sub {
-	font-size: clamp(8px, .625vw, 12px);
+.msc-val--dim {
+	font-size: clamp(20px, 2.08vw, 40px);
+	color: rgba(255,255,255,.6);
+}
+.msc-label-col {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+}
+.msc-label {
+	font-size: clamp(8px, .625vw, 11px);
+	font-weight: 800;
+	letter-spacing: .15em;
+	color: rgba(255,255,255,.45);
+}
+.msc-sub {
+	font-size: clamp(7px, .52vw, 10px);
 	font-weight: 700;
-	letter-spacing: .07em;
-	color: rgba(255,255,255,.3);
-}
-.vs-label {
-	font-size: clamp(12px, 1.04vw, 20px);
-	font-weight: 900;
-	letter-spacing: .1em;
+	letter-spacing: .08em;
 	color: rgba(255,255,255,.25);
 }
 

@@ -5,6 +5,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useOnboarding } from '../lib/OnboardingContext';
+
 import { fetchGames, GameRow } from '../lib/db';
 import { calculateAvg3 } from '../lib/dartsStats';
 import { GameVariant, STARTING_SCORE } from '../lib/gameVariant';
@@ -36,6 +38,8 @@ export default function NewGameScreen({ navigation }: NewGameScreenProps) {
 	const [variant, setVariant] = useState<GameVariant>('501');
 	const [advanced, setAdvanced] = useState(false);
 	const [games, setGames] = useState<GameRow[]>([]);
+
+	const { startTour } = useOnboarding();
 
 	useFocusEffect(
 		useCallback(() => {
@@ -93,6 +97,9 @@ export default function NewGameScreen({ navigation }: NewGameScreenProps) {
 							</Text>
 						</Pressable>
 					</View>
+					<Pressable style={styles.helpBtn} onPress={startTour}>
+						<Text style={styles.helpBtnText}>?</Text>
+					</Pressable>
 				</View>
 
 				<View style={styles.variantGrid}>
@@ -334,6 +341,19 @@ const styles = StyleSheet.create({
 	multiplayerTxt: {
 		color: '#60D394',
 		fontSize: 15,
+		fontWeight: '900',
+	},
+	helpBtn: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		backgroundColor: 'rgba(255,255,255,0.08)',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	helpBtnText: {
+		color: 'rgba(255,255,255,0.5)',
+		fontSize: 16,
 		fontWeight: '900',
 	},
 });

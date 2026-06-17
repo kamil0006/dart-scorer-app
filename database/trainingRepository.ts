@@ -119,7 +119,7 @@ export function saveTrainingSession(session: TrainingSession): number {
 // Get all training sessions
 export function getTrainingSessions(): TrainingSession[] {
 	ensureDBReady();
-	const rows = db.getAllSync('SELECT * FROM training_sessions ORDER BY date DESC') as TrainingSessionRow[];
+	const rows = db.getAllSync('SELECT * FROM training_sessions ORDER BY id DESC') as TrainingSessionRow[];
 
 	return rows.map(mapTrainingSession);
 }
@@ -213,7 +213,7 @@ export function getTrainingStats(): TrainingStats {
 // Get recent training sessions (last 10)
 export function getRecentTrainingSessions(limit: number = 10): TrainingSession[] {
 	ensureDBReady();
-	const rows = db.getAllSync('SELECT * FROM training_sessions ORDER BY date DESC LIMIT ?', limit) as TrainingSessionRow[];
+	const rows = db.getAllSync('SELECT * FROM training_sessions ORDER BY id DESC LIMIT ?', limit) as TrainingSessionRow[];
 
 	return rows.map(mapTrainingSession);
 }

@@ -10,7 +10,7 @@ const IMPOSSIBLE_THREE_DART_SCORES = new Set([163, 166, 169, 172, 173, 175, 176,
 export type NumpadProps = {
 	onCommit?: (pts: number) => void;
 	onCommitRaw?: (raw: string) => void;
-	onUndo: () => void;
+	onUndo?: () => void;
 	extended?: boolean;
 	compact?: boolean;
 };
@@ -53,7 +53,7 @@ export default function Numpad({ onCommit, onCommitRaw, onUndo, extended = false
 
 	const confirmUndoTurn = () => {
 		setShowUndoConfirm(false);
-		onUndo();
+		onUndo?.();
 	};
 
 	const basicKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
@@ -87,9 +87,11 @@ export default function Numpad({ onCommit, onCommitRaw, onUndo, extended = false
 				<Key onPress={del} dark wide disabled={!buffer} compact={compact}>
 					<MaterialIcons name='backspace' size={23} color={buffer ? '#fff' : '#777'} />
 				</Key>
-				<Key onPress={requestUndoTurn} dark wide compact={compact}>
-					<MaterialIcons name='delete-sweep' size={25} color='#fff' />
-				</Key>
+				{onUndo && (
+					<Key onPress={requestUndoTurn} dark wide compact={compact}>
+						<MaterialIcons name='delete-sweep' size={25} color='#fff' />
+					</Key>
+				)}
 				<Key onPress={commit} confirm wide disabled={!canCommit} compact={compact}>
 					<MaterialIcons name='check-circle' size={22} color={canCommit ? '#0B0B0B' : '#A6DDB5'} />
 					<Text style={[styles.commitText, !canCommit && styles.commitTextDisabled]}>{strings.turn}</Text>

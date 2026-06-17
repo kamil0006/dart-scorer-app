@@ -250,20 +250,38 @@ function buildTopBar(state) {
 }
 
 /* ── CENTER PANEL ── */
-function buildCenterPanel(state) {
+function buildCenterPanel(state, players) {
+	const setsTarget = Number(state.setsTarget || 1);
+	const legsTarget = Number(state.legsTarget || 1);
+	const p1 = players?.[0];
+	const p2 = players?.[1];
+
+	const legsRow = (p1 && p2) ? `
+		<div class="msc-row">
+			<span class="msc-val">${p1.legsWon}</span>
+			<div class="msc-label-col">
+				<span class="msc-label">LEGI</span>
+				<span class="msc-sub">FT ${legsTarget}</span>
+			</div>
+			<span class="msc-val">${p2.legsWon}</span>
+		</div>` : '';
+
+	const setsRow = (setsTarget > 1 && p1 && p2) ? `
+		<div class="msc-row">
+			<span class="msc-val msc-val--dim">${p1.setsWon}</span>
+			<div class="msc-label-col">
+				<span class="msc-label">SETY</span>
+				<span class="msc-sub">FT ${setsTarget}</span>
+			</div>
+			<span class="msc-val msc-val--dim">${p2.setsWon}</span>
+		</div>` : '';
+
 	return `
 		<div class="center-panel">
 			<div class="center-line"></div>
-			<div class="center-card">
-				<div class="center-card-label">LEG</div>
-				<div class="center-card-value center-card-value--accent">${state.currentLeg}</div>
-				<div class="center-card-sub">z ${state.legsTarget}</div>
-			</div>
-			<div class="vs-label">VS</div>
-			<div class="center-card">
-				<div class="center-card-label">SET</div>
-				<div class="center-card-value">${state.currentSet}</div>
-				<div class="center-card-sub">z ${state.setsTarget}</div>
+			<div class="match-score-center">
+				${legsRow}
+				${setsRow}
 			</div>
 		</div>`;
 }
@@ -286,7 +304,7 @@ function buildTwoPlayerScreen(players, activeIndex, status, state) {
 			${buildTopBar(state)}
 			<div class="game-main">
 				${buildPlayerPanel(players[0], activeIndex === 0, status, 'left', bustPlayerId)}
-				${buildCenterPanel(state)}
+				${buildCenterPanel(state, players)}
 				${buildPlayerPanel(players[1], activeIndex === 1, status, 'right', bustPlayerId)}
 			</div>
 		</div>`;
@@ -295,7 +313,7 @@ function buildTwoPlayerScreen(players, activeIndex, status, state) {
 function buildMultiPlayerScreen(players, activeIndex, status, state) {
 	const bustPlayerId = state.bustPlayerId ?? null;
 	const cards = players.slice(0, 4)
-		.map((p, i) => buildCompactCard(p, i === activeIndex, status, bustPlayerId))
+		.map((p, i) => buildCompactCard(p, i === activeIndex, status, bustPlayerId, state))
 		.join('');
 	return `
 		<div class="game-screen">
@@ -313,7 +331,7 @@ function buildPlayerPanel(player, isActive, status, side, bustPlayerId) {
 	const checkoutArr = Array.isArray(player.checkout) ? player.checkout : [];
 	const checkout    = checkoutArr.length ? checkoutArr.join(' · ') : null;
 
-	// all turns this leg (server keeps last 10; bust turns sent as 0)
+	// all turns this leg (busts stored as 0 in the array at their original position)
 	const turns     = Array.isArray(player.turns) ? player.turns : [];
 
 	// stats
@@ -346,34 +364,19 @@ function buildPlayerPanel(player, isActive, status, side, bustPlayerId) {
 		? `<div class="active-arrow${isRight ? ' active-arrow--left' : ''}"></div>`
 		: '';
 
-	// counters HTML
-	const countersHtml = `
-		<div class="panel-counters">
-			<div class="counter">
-				<div class="counter-label">SETY</div>
-				<div class="counter-value">${player.setsWon}</div>
-			</div>
-			<div class="counter${isActive ? ' counter--accent' : ''}">
-				<div class="counter-label${isActive ? ' counter-label--accent' : ''}">LEGI</div>
-				<div class="counter-value${isActive ? ' counter-value--accent' : ''}">${player.legsWon}</div>
-			</div>
-		</div>`;
-
 	const nameHtml = `
 		<div class="name-block${isRight ? ' name-block--right' : ''}">
 			<div class="player-name">${esc(player.name)}</div>
 			<div class="player-status-label${isActive ? ' player-status-label--active' : ''}">${statusLabel}</div>
 		</div>`;
 
-	// header layout: left panel → [arrow+name | counters], right panel → [counters | name+arrow]
+	// header layout: left panel → [name+arrow], right panel → [name+arrow]
 	const headerHtml = isRight
 		? `<div class="panel-header">
-				${countersHtml}
 				<div class="panel-header-identity">${nameHtml}${arrowHtml}</div>
 			</div>`
 		: `<div class="panel-header">
 				<div class="panel-header-identity">${arrowHtml}${nameHtml}</div>
-				${countersHtml}
 			</div>`;
 
 	// stat strip
@@ -421,7 +424,7 @@ function buildPlayerPanel(player, isActive, status, side, bustPlayerId) {
 }
 
 /* ── COMPACT CARD (3-4 players) ── */
-function buildCompactCard(player, isActive, status, bustPlayerId) {
+function buildCompactCard(player, isActive, status, bustPlayerId, state) {
 	const isBust   = status === 'bust' && bustPlayerId != null && player.id === bustPlayerId;
 	const turns    = Array.isArray(player.turns) ? player.turns : [];
 	const checkout = Array.isArray(player.checkout) && player.checkout.length
@@ -446,8 +449,8 @@ function buildCompactCard(player, isActive, status, bustPlayerId) {
 				${arrowHtml}
 				<div class="compact-name">${esc(player.name)}</div>
 				<div class="compact-counters">
-					<span class="counter-pill">S:${player.setsWon}</span>
-					<span class="counter-pill${isActive ? ' counter-pill--accent' : ''}">L:${player.legsWon}</span>
+					<span class="counter-pill">S:${player.setsWon}/${state?.setsTarget ?? '?'}</span>
+					<span class="counter-pill${isActive ? ' counter-pill--accent' : ''}">L:${player.legsWon}/${state?.legsTarget ?? '?'}</span>
 				</div>
 			</div>
 			<div class="compact-score${isBust ? ' big-score--bust' : ''}">${player.remaining}</div>

@@ -246,7 +246,7 @@ export function validateCheckout(hits: { bed: number; m: 1 | 2 | 3 }[], checkout
 		if (target === '25') return sum + 25;
 		if (target.startsWith('T')) return sum + parseInt(target.slice(1)) * 3;
 		if (target.startsWith('D')) return sum + parseInt(target.slice(1)) * 2;
-		return sum + parseInt(target) || 0;
+		return sum + (parseInt(target) || 0);
 	}, 0);
 
 	// Points must match

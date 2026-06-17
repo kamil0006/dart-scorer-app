@@ -7,6 +7,9 @@ const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PLAYER_TTL_MS = 45000;
+// Drop rooms that have seen no activity (no polls, no turns) for this long.
+const ROOM_TTL_MS = 1000 * 60 * 60; // 1 hour
+const ROOM_SWEEP_INTERVAL_MS = 1000 * 60 * 5; // every 5 minutes
 
 let state = createInitialState();
 const clients = new Set();
@@ -86,7 +89,7 @@ const server = http.createServer(async (req, res) => {
 		}
 
 		// Room-based multiplayer routes
-		const roomMatch = /^\/api\/rooms(?:\/([A-Z0-9]{4})(\/[a-z]+)?)?$/i.exec(url.pathname);
+		const roomMatch = /^\/api\/rooms(?:\/([A-Z0-9]{4})(\/[a-z-]+)?)?$/i.exec(url.pathname);
 		if (roomMatch) {
 			const code = (roomMatch[1] || '').toUpperCase();
 			const sub = roomMatch[2] || '';
@@ -151,6 +154,19 @@ const server = http.createServer(async (req, res) => {
 				sendJson(res, serializeRoom(room));
 				return;
 			}
+			if (code && sub === '/display-confirm' && req.method === 'POST') {
+				const room = rooms.get(code);
+				if (!room) { sendJsonStatus(res, 404, { error: 'Room not found' }); return; }
+				// Unlock next leg: reset remaining and resume play so opponent's numpad activates
+				if (room.status === 'legWon' || room.status === 'setWon') {
+					room.players.forEach(p => { p.remaining = room.startScore; });
+					room.status = 'playing';
+					broadcastRoom(room);
+				}
+				broadcastRoomToDisplay(room);
+				sendJson(res, serializeRoom(room));
+				return;
+			}
 			if (code && sub === '/events' && req.method === 'GET') {
 				const room = rooms.get(code);
 				if (!room) { sendJsonStatus(res, 404, { error: 'Room not found' }); return; }
@@ -179,6 +195,26 @@ server.listen(PORT, HOST, () => {
 		console.log(`Network display URL: http://${address}:${PORT}/display`);
 	}
 });
+
+const roomSweepTimer = setInterval(sweepStaleRooms, ROOM_SWEEP_INTERVAL_MS);
+roomSweepTimer.unref?.();
+
+function sweepStaleRooms() {
+	const now = Date.now();
+	for (const [code, room] of rooms) {
+		if (now - (room.lastActivity ?? room.createdAt ?? 0) < ROOM_TTL_MS) continue;
+		const clients = roomClients.get(code);
+		if (clients) {
+			for (const client of clients) {
+				clearInterval(client.heartbeat);
+				try { client.res.end(); } catch {}
+			}
+		}
+		roomClients.delete(code);
+		rooms.delete(code);
+		console.log(`[room] swept stale ${code} (inactive ${Math.round((now - (room.lastActivity ?? 0)) / 1000)}s)`);
+	}
+}
 
 function createInitialState() {
 	return {
@@ -249,7 +285,7 @@ function createPlayer({
 	legAverageHistory = [],
 	setAverageHistory = [],
 }) {
-	const normalizedTurns = turns.map(toNumber).filter(Number.isFinite).slice(-10);
+	const normalizedTurns = turns.map(toNumber).filter(Number.isFinite);
 	const scored = normalizedTurns.reduce((sum, turn) => sum + turn, 0);
 	const darts = normalizedTurns.length * 3;
 	const fallbackAverage = Number(((scored / Math.max(darts, 1)) * 3).toFixed(1));
@@ -542,6 +578,7 @@ function createRoom({ startScore, setsTarget, legsTarget, hostId, hostName }) {
 		players: [host],
 		undoStack: [],
 		createdAt: Date.now(),
+		lastActivity: Date.now(),
 	};
 	rooms.set(code, room);
 	roomClients.set(code, new Set());
@@ -570,6 +607,8 @@ function createRoomPlayer(id, name, remaining) {
 }
 
 function serializeRoom(room) {
+	// Touch on every (de)serialization — covers polls, turns, joins, broadcasts.
+	room.lastActivity = Date.now();
 	return {
 		code: room.code,
 		status: room.status,
@@ -588,8 +627,8 @@ function serializeRoom(room) {
 function serializeRoomPlayer(p) {
 	const legBusts = p.legBusts ?? 0;
 	const legScored = p.turns.reduce((s, t) => s + t, 0);
-	// Busts count as 3 darts with 0 points (PDC rules)
-	const legDarts = (p.turns.length + legBusts) * 3;
+	// Busts stored as 0 in turns array, so length already includes them (PDC rules: 3 darts per turn)
+	const legDarts = p.turns.length * 3;
 	const legAvg = legDarts > 0 ? +((legScored / legDarts) * 3).toFixed(1) : null;
 	const setTotalScored = p.setScored + legScored;
 	// p.setDarts and p.matchDarts already include bust darts from completed legs
@@ -617,7 +656,7 @@ function serializeRoomPlayer(p) {
 
 function processRoomTurn(room, playerId, score) {
 	if (room.status === 'matchWon') return { error: 'Match is over' };
-	if (!['playing', 'bust', 'legWon', 'setWon'].includes(room.status)) return { error: 'Game not started' };
+	if (!['playing', 'bust'].includes(room.status)) return { error: 'Game not started' };
 
 	const seat = room.players.findIndex(p => p.id === playerId);
 	if (seat === -1) return { error: 'Player not in room' };
@@ -632,6 +671,7 @@ function processRoomTurn(room, playerId, score) {
 
 	if (isBust) {
 		player.legBusts = (player.legBusts ?? 0) + 1;
+		player.turns = [...player.turns, 0];
 		room.status = 'bust';
 		room.activePlayerIndex = 1 - seat;
 		room.turnNumber++;
@@ -640,13 +680,12 @@ function processRoomTurn(room, playerId, score) {
 		return {};
 	}
 
-	player.turns = [...player.turns, score].slice(-10);
+	player.turns = [...player.turns, score];
 	player.remaining = newRemaining;
 
 	if (newRemaining === 0) {
-		const legBusts = player.legBusts ?? 0;
 		const legScored = player.turns.reduce((s, t) => s + t, 0);
-		const legDarts = (player.turns.length + legBusts) * 3;
+		const legDarts = player.turns.length * 3;
 		if (legDarts > 0) {
 			player.legAverages.push(+((legScored / legDarts) * 3).toFixed(1));
 			player.setScored += legScored;
@@ -669,7 +708,20 @@ function processRoomTurn(room, playerId, score) {
 
 			if (player.setsWon >= room.setsTarget) {
 				room.status = 'matchWon';
-				room.players.forEach(p => { p.turns = []; p.remaining = room.startScore; p.legBusts = 0; });
+				room.players.forEach(p => {
+					if (p.id !== player.id) {
+						const lostScored = p.turns.reduce((s, t) => s + t, 0);
+						const lostDarts = p.turns.length * 3;
+						if (lostDarts > 0) {
+							p.legAverages.push(+((lostScored / lostDarts) * 3).toFixed(1));
+							p.setScored += lostScored;
+							p.setDarts += lostDarts;
+							p.matchScored += lostScored;
+							p.matchDarts += lostDarts;
+						}
+					}
+				});
+				room.players.forEach(p => { p.turns = []; p.legBusts = 0; });
 				broadcastRoom(room);
 				broadcastRoomToDisplay(room);
 				return {};
@@ -682,7 +734,20 @@ function processRoomTurn(room, playerId, score) {
 			room.currentLeg++;
 		}
 
-		room.players.forEach(p => { p.turns = []; p.remaining = room.startScore; p.legBusts = 0; });
+		room.players.forEach(p => {
+			if (p.id !== player.id) {
+				const lostScored = p.turns.reduce((s, t) => s + t, 0);
+				const lostDarts = p.turns.length * 3;
+				if (lostDarts > 0) {
+					p.legAverages.push(+((lostScored / lostDarts) * 3).toFixed(1));
+					p.setScored += lostScored;
+					p.setDarts += lostDarts;
+					p.matchScored += lostScored;
+					p.matchDarts += lostDarts;
+				}
+			}
+		});
+		room.players.forEach(p => { p.turns = []; p.legBusts = 0; });
 		room.legStarterIndex = 1 - room.legStarterIndex;
 		room.activePlayerIndex = room.legStarterIndex;
 	} else {
@@ -740,8 +805,6 @@ function broadcastRoom(room) {
 function broadcastRoomToDisplay(room) {
 	const players = room.players.map(p => {
 		const sp = serializeRoomPlayer(p);
-		// Append bust turns as 0s so display shows them at the right side (most recent)
-		const bustTurns = Array(p.legBusts ?? 0).fill(0);
 		return {
 			id: p.id,
 			name: p.name,
@@ -749,7 +812,7 @@ function broadcastRoomToDisplay(room) {
 			setsWon: p.setsWon,
 			legsWon: p.legsWon,
 			matchLegsWon: p.matchLegsWon,
-			turns: [...p.turns, ...bustTurns],
+			turns: p.turns,
 			checkout: getRoomCheckout(p.remaining),
 			average3d: sp.average3d ?? 0,
 			legAverage3d: sp.legAverage3d ?? 0,

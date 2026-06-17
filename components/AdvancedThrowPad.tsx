@@ -6,7 +6,7 @@ import { Dart } from '../lib/db';
 
 type Props = {
 	onThrow: (d: { bed: number; m: 1 | 2 | 3 }) => void;
-	onUndo: () => void;
+	onUndo?: () => void;
 };
 
 const MULTIPLIERS: { label: string; value: 1 | 2 | 3 }[] = [
@@ -37,9 +37,11 @@ export default function AdvancedThrowPad({ onThrow, onUndo }: Props) {
 					<SpecialButton label='25' icon='gps-fixed' onPress={() => add({ bed: 25, m: 1 })} />
 					<SpecialButton label='50' icon='adjust' onPress={() => add({ bed: 50, m: 1 })} />
 					<SpecialButton label='0' icon='close' danger onPress={() => onThrow({ bed: 0, m: 1 })} />
-					<Pressable style={styles.undoButton} onPress={onUndo}>
-						<MaterialIcons name='undo' size={18} color='#fff' />
-					</Pressable>
+					{onUndo && (
+						<Pressable style={styles.undoButton} onPress={onUndo}>
+							<MaterialIcons name='undo' size={18} color='#fff' />
+						</Pressable>
+					)}
 				</View>
 			</View>
 

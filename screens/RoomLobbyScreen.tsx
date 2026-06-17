@@ -17,7 +17,7 @@ type RoomState = {
 	startScore: number;
 	setsTarget: number;
 	legsTarget: number;
-	players: Array<{ id: string; name: string; seat: number | null }>;
+	players: { id: string; name: string; seat: number | null }[];
 };
 
 export default function RoomLobbyScreen({ navigation, route }: Props) {

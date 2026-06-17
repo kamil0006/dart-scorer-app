@@ -51,6 +51,7 @@ type PendingCheckoutSave = {
 	allTurns: number[];
 	checkoutStr: string | undefined;
 	hits: Dart[];
+	actualDarts?: number;
 };
 
 type Props = StackScreenProps<RootStackParamList, 'RoomGame'>;
@@ -58,7 +59,7 @@ type Props = StackScreenProps<RootStackParamList, 'RoomGame'>;
 const LEG_END = new Set(['legWon', 'setWon', 'matchWon']);
 
 export default function RoomGameScreen({ navigation, route }: Props) {
-	const { roomCode, playerId, playerName, serverUrl, seat } = route.params;
+	const { roomCode, playerId, serverUrl, seat } = route.params;
 	const { height } = useWindowDimensions();
 	const compact = height < 680;
 	const { strings } = useLanguage();
@@ -82,9 +83,11 @@ export default function RoomGameScreen({ navigation, route }: Props) {
 	const legHitsRef = useRef<Dart[]>([]);
 	const prevTurnsLenRef = useRef(0);
 	const prevMyMatchLegsRef = useRef(0);
+	const advancedRef = useRef(false);
+	const winningTurnDartsRef = useRef(0);
 
 	useEffect(() => {
-		getAdvanced().then(setAdvanced);
+		getAdvanced().then(v => { setAdvanced(v); advancedRef.current = v; });
 	}, []);
 
 	const updateLegTurns = (turns: number[]) => {
@@ -99,8 +102,12 @@ export default function RoomGameScreen({ navigation, route }: Props) {
 			const status = data.status;
 
 			const isLegEnd = LEG_END.has(status) && !LEG_END.has(prevStatus);
-			// Computed before prevMyMatchLegsRef is updated, used for flash message below
-			let iWonThisLeg = false;
+			const myMatchLegs = myPlayer?.matchLegsWon ?? 0;
+			// Always computed from matchLegsWon delta so it's correct even when isLegEnd=false
+			// (e.g. when poll skips setWon→playing and sees setWon→legWon directly)
+			const iWonThisLeg = myMatchLegs > prevMyMatchLegsRef.current;
+			// Only show "leg lost" flash if this player actually had turns in the ended leg
+			let legLostWithTurns = false;
 
 			if (!isLegEnd) {
 				// Only update turn tracking when NOT at leg end.
@@ -119,19 +126,15 @@ export default function RoomGameScreen({ navigation, route }: Props) {
 					prevTurnsLenRef.current = myTurns.length;
 				}
 
-				// After a bust, server switches activePlayerIndex to the OTHER player.
-			// So if it's no longer my turn and status just became bust, I'm the one who busted.
-			if (status === 'bust' && prevStatus !== 'bust' && data.activePlayerIndex !== seat) {
-				updateLegTurns([...legTurnsRef.current, 0]);
-			}
+			// Bust is now stored as 0 in server-side turns array, so it arrives
+			// through the normal myTurns length detection above — no manual add needed.
 		}
 
 		if (isLegEnd) {
-				const myMatchLegs = myPlayer?.matchLegsWon ?? 0;
-				const iWon = myMatchLegs > prevMyMatchLegsRef.current;
-				iWonThisLeg = iWon;
-
-				if (iWon) {
+				// Clear any pending input so ScoreConfirmCard and CheckoutDartsModal never overlap
+				setPendingScore(null);
+				setCurrentTurnDarts([]);
+				if (iWonThisLeg) {
 					// Infer winning score and ask how many darts were used
 					const existingTurns = [...legTurnsRef.current];
 					const existingScored = existingTurns.reduce((s, t) => s + t, 0);
@@ -144,10 +147,12 @@ export default function RoomGameScreen({ navigation, route }: Props) {
 						allTurns,
 						checkoutStr: checkoutPath ? checkoutPath.join(' ') : undefined,
 						hits: [...legHitsRef.current],
+						actualDarts: advancedRef.current ? winningTurnDartsRef.current : undefined,
 					});
 					setShowCheckoutModal(true);
 				} else {
 					const turns = legTurnsRef.current;
+					legLostWithTurns = turns.length > 0;
 					if (turns.length > 0) {
 						const scored = turns.reduce((s, t) => s + t, 0);
 						saveGame({
@@ -175,21 +180,23 @@ export default function RoomGameScreen({ navigation, route }: Props) {
 				if (status === 'bust' && prevStatus !== 'bust' && data.activePlayerIndex !== seat) {
 					showFlash(strings.mpBustFlash, 'whatshot', '#ff6b6b');
 				} else if (status === 'legWon') {
-					showFlash(
-						iWonThisLeg ? strings.mpLegWon : strings.mpLegLost,
-						iWonThisLeg ? 'emoji-events' : 'sentiment-dissatisfied',
-						iWonThisLeg ? '#60D394' : '#ff6b6b',
-					);
+					if (!isLegEnd) prevMyMatchLegsRef.current = myMatchLegs;
+					if (iWonThisLeg) {
+						showFlash(strings.mpLegWon, 'emoji-events', '#60D394');
+					} else if (legLostWithTurns) {
+						showFlash(strings.mpLegLost, 'sentiment-dissatisfied', '#ff6b6b');
+					}
 				} else if (status === 'setWon') {
-					showFlash(
-						iWonThisLeg ? strings.mpSetWon : strings.mpSetLost,
-						iWonThisLeg ? 'workspace-premium' : 'sentiment-dissatisfied',
-						iWonThisLeg ? '#FFD700' : '#ff6b6b',
-					);
+					if (!isLegEnd) prevMyMatchLegsRef.current = myMatchLegs;
+					if (iWonThisLeg) {
+						showFlash(strings.mpSetWon, 'workspace-premium', '#FFD700');
+					} else if (legLostWithTurns) {
+						showFlash(strings.mpSetLost, 'sentiment-dissatisfied', '#ff6b6b');
+					}
 				}
 			}
 		},
-		[seat]
+		[seat, strings]
 	);
 
 	const showFlash = (text: string, icon: keyof typeof MaterialIcons.glyphMap, color: string) => {
@@ -203,7 +210,10 @@ export default function RoomGameScreen({ navigation, route }: Props) {
 			const r = await fetch(`${serverUrl}/api/rooms/${roomCode}`);
 			if (r.ok && !cancelledRef.current) applyRoom(await r.json());
 		} catch {}
-		if (!cancelledRef.current) pollingRef.current = setTimeout(poll, 1200);
+		if (!cancelledRef.current) {
+			const interval = LEG_END.has(prevStatusRef.current) ? 300 : 1200;
+			pollingRef.current = setTimeout(poll, interval);
+		}
 	}, [serverUrl, roomCode, applyRoom]);
 
 	useEffect(() => {
@@ -212,6 +222,8 @@ export default function RoomGameScreen({ navigation, route }: Props) {
 			cancelledRef.current = true;
 			if (pollingRef.current) clearTimeout(pollingRef.current);
 		};
+		// Start the self-scheduling poll loop once on mount; re-running would spawn duplicate loops.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	// Use useFocusEffect so BackHandler is only active when this screen is focused.
@@ -228,6 +240,8 @@ export default function RoomGameScreen({ navigation, route }: Props) {
 				return true;
 			});
 			return () => sub.remove();
+			// doLeave is stable for our purposes; re-binding only on room change is intended.
+			// eslint-disable-next-line react-hooks/exhaustive-deps
 		}, [room])
 	);
 
@@ -259,7 +273,7 @@ const doLeave = () => {
 		doLeave();
 	};
 
-	const handleCheckoutSave = (darts: number) => {
+	const handleCheckoutSave = async (darts: number) => {
 		if (pendingCheckoutSave) {
 			saveGame({
 				start: pendingCheckoutSave.startScore,
@@ -271,9 +285,13 @@ const doLeave = () => {
 		}
 		setPendingCheckoutSave(null);
 		setShowCheckoutModal(false);
+		try {
+			const r = await fetch(`${serverUrl}/api/rooms/${roomCode}/display-confirm`, { method: 'POST' });
+			if (r.ok && !cancelledRef.current) applyRoom(await r.json());
+		} catch {}
 	};
 
-	const handleCheckoutClose = () => {
+	const handleCheckoutClose = async () => {
 		if (pendingCheckoutSave) {
 			saveGame({
 				start: pendingCheckoutSave.startScore,
@@ -284,6 +302,10 @@ const doLeave = () => {
 		}
 		setPendingCheckoutSave(null);
 		setShowCheckoutModal(false);
+		try {
+			const r = await fetch(`${serverUrl}/api/rooms/${roomCode}/display-confirm`, { method: 'POST' });
+			if (r.ok && !cancelledRef.current) applyRoom(await r.json());
+		} catch {}
 	};
 
 	const handleScore = async (score: number) => {
@@ -302,19 +324,23 @@ const doLeave = () => {
 		}
 	};
 
-	// Advanced mode: accumulate individual darts; show confirm card after 3
+	// Advanced mode: accumulate individual darts; show confirm card after 3 or on checkout
 	const handleDartThrow = (dart: Dart) => {
 		if (room?.activePlayerIndex !== seat || submitting || pendingScore !== null) return;
+		if (room?.status !== 'playing' && room?.status !== 'bust') return;
 		const newDarts = [...currentTurnDarts, dart];
+		const scored = newDarts.reduce((s, d) => s + d.bed * d.m, 0);
+		const myRemaining = room?.players[seat]?.remaining ?? 0;
 		setCurrentTurnDarts(newDarts);
-		if (newDarts.length === 3) {
-			setPendingScore(newDarts.reduce((s, d) => s + d.bed * d.m, 0));
+		if (scored === myRemaining || newDarts.length === 3) {
+			setPendingScore(scored);
 		}
 	};
 
 	const handleConfirmScore = async () => {
 		if (pendingScore === null) return;
 		if (advanced) {
+			winningTurnDartsRef.current = currentTurnDarts.length;
 			legHitsRef.current = [...legHitsRef.current, ...currentTurnDarts];
 			setLegHits(legHitsRef.current.slice());
 			setCurrentTurnDarts([]);
@@ -326,34 +352,11 @@ const doLeave = () => {
 
 	const handleEditScore = () => {
 		if (advanced) {
-			setCurrentTurnDarts(prev => prev.slice(0, -1));
+			setCurrentTurnDarts([]);
 		}
 		setPendingScore(null);
 	};
 
-	const handleUndoCurrentTurn = () => {
-		if (pendingScore !== null) {
-			handleEditScore();
-			return;
-		}
-		if (currentTurnDarts.length > 0) {
-			setCurrentTurnDarts(prev => prev.slice(0, -1));
-		} else {
-			handleUndo();
-		}
-	};
-
-	const handleUndo = async () => {
-		if (!room?.canUndo) return;
-		try {
-			const r = await fetch(`${serverUrl}/api/rooms/${roomCode}/undo`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ playerId }),
-			});
-			if (r.ok) applyRoom(await r.json());
-		} catch {}
-	};
 
 	if (!room) {
 		return (
@@ -368,7 +371,7 @@ const doLeave = () => {
 
 	const myPlayer = room.players[seat];
 	const oppPlayer = room.players[1 - seat];
-	const isMyTurn = room.activePlayerIndex === seat;
+	const isMyTurn = room.activePlayerIndex === seat && (room.status === 'playing' || room.status === 'bust');
 	const isWaiting = room.status === 'waiting' || room.status === 'ready';
 	const checkout = myPlayer ? getCheckout(myPlayer.remaining) ?? undefined : undefined;
 
@@ -409,6 +412,8 @@ const doLeave = () => {
 				<CheckoutDartsModal
 					visible={showCheckoutModal}
 					checkout={pendingCheckoutSave?.checkoutStr}
+					isAdvanced={advanced}
+					actualDarts={pendingCheckoutSave?.actualDarts ?? 1}
 					onSave={handleCheckoutSave}
 					onClose={handleCheckoutClose}
 				/>
@@ -445,7 +450,6 @@ const doLeave = () => {
 
 				{flash && (
 					<View style={[styles.flashBanner, { borderColor: flash.color, backgroundColor: flash.color + '18' }]}>
-						<MaterialIcons name={flash.icon} size={20} color={flash.color} />
 						<Text style={[styles.flashBannerText, { color: flash.color }]}>{flash.text}</Text>
 					</View>
 				)}
@@ -496,11 +500,9 @@ const doLeave = () => {
 									<>
 										<CurrentTurnSlots
 											hits={currentTurnDarts}
-											onUndo={handleUndoCurrentTurn}
 										/>
 										<AdvancedThrowPad
 											onThrow={handleDartThrow}
-											onUndo={handleUndoCurrentTurn}
 										/>
 										<DartboardHeatmap
 											hits={legHits}
@@ -510,7 +512,6 @@ const doLeave = () => {
 								) : (
 									<Numpad
 										onCommit={submitting ? undefined : setPendingScore}
-										onUndo={handleUndo}
 										compact={compact}
 									/>
 								)}
@@ -541,6 +542,8 @@ const doLeave = () => {
 			<CheckoutDartsModal
 				visible={showCheckoutModal}
 				checkout={pendingCheckoutSave?.checkoutStr}
+				isAdvanced={advanced}
+				actualDarts={pendingCheckoutSave?.actualDarts ?? 1}
 				onSave={handleCheckoutSave}
 				onClose={handleCheckoutClose}
 			/>

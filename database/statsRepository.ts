@@ -1,4 +1,4 @@
-import { db } from '../lib/db';
+import { db, type GameRow } from '../lib/db';
 import {
 	addTurnToScoreRanges,
 	calculateAvg3,
@@ -10,7 +10,6 @@ import {
 	isForfeitedGame,
 	parseTurns,
 } from '../lib/dartsStats';
-import { GameRow } from '../lib/db';
 
 export type GameMode = 'simple' | 'advanced';
 

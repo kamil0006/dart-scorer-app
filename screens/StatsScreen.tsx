@@ -44,20 +44,6 @@ export default function StatsScreen() {
 			},
 		});
 
-	const handleDeleteTrainingSession = (id: number) =>
-		showDeleteConfirmation({
-			title: strings.deleteConfirm,
-			message: strings.deleteConfirmMessage,
-			onConfirm: () => {
-				try {
-					stats.deleteSession(id);
-					setShowDeleteModal(false);
-				} catch (error) {
-					console.warn('Delete training session error:', error);
-				}
-			},
-		});
-
 	return (
 		<SafeAreaView style={styles.container}>
 			<View style={styles.actionBar}>

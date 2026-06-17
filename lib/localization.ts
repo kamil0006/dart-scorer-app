@@ -382,6 +382,28 @@ export interface LocalizedStrings {
 	backupErrorExport: string;
 	backupErrorImport: string;
 	backupErrorInvalidFile: string;
+
+	// Onboarding
+	onbStep0Title: string;
+	onbStep0Desc: string;
+	onbStep1Title: string;
+	onbStep1Desc: string;
+	onbStep2Title: string;
+	onbStep2Desc: string;
+	onbStep3Title: string;
+	onbStep3Desc: string;
+	onbStep4Title: string;
+	onbStep4Desc: string;
+	onbStep5Title: string;
+	onbStep5Desc: string;
+	onbStep6Title: string;
+	onbStep6Desc: string;
+	onbStep7Title: string;
+	onbStep7Desc: string;
+	onbSkipTour: string;
+	onbBack: string;
+	onbNext: string;
+	onbFinish: string;
 }
 
 const polishStrings: LocalizedStrings = {
@@ -718,6 +740,26 @@ const polishStrings: LocalizedStrings = {
 	mpAdvShort: 'ZAW',
 	mpWhoStarts: 'Kto zaczyna?',
 	mpBullThrowHint: 'Zdecyduj rzutem w bulla',
+	onbStep0Title: 'Witaj w Dart Scorer!',
+	onbStep0Desc: 'Aplikacja do liczenia punktów w darta z historią wyników, trybem WiFi multiplayer i zewnętrznym wyświetlaczem. Ten krótki przewodnik pokaże Ci gdzie co się znajduje.',
+	onbStep1Title: 'Wariant gry',
+	onbStep1Desc: 'Wybierz między 301, 401 lub 501. Każdy wariant różni się liczbą punktów do zebrania — 501 to format turniejowy.',
+	onbStep2Title: 'Tryb gry',
+	onbStep2Desc: 'Prosty: wpisujesz wynik każdej rundy z klawiatury. Zaawansowany: zaznaczasz każdą lotkę osobno, a wynik pokazuje się na tarczy poniżej.',
+	onbStep3Title: 'Zacznij grę',
+	onbStep3Desc: 'Naciśnij GRAJ aby natychmiast rozpocząć grę.',
+	onbStep4Title: 'Multiplayer WiFi',
+	onbStep4Desc: 'Jeden laptop uruchamia serwer, na którym wyświetlane są wyniki — telefon jest wtedy kontrolerem. Pozostali gracze dołączają kodem pokoju.',
+	onbStep5Title: 'Statystyki',
+	onbStep5Desc: 'Tutaj znajdziesz historię wszystkich swoich gier, wykresy postępów, średnie 3-rzutowe, checkouty i wiele więcej. Kliknij dowolną grę aby zobaczyć szczegółową analizę.',
+	onbStep6Title: 'Trening',
+	onbStep6Desc: "Ćwicz konkretne elementy gry: losowe targety, checkouty, zegar (1–20 w kolejności) oraz Bob's 27 (klasyczny trening podwójnych). Wyniki sesji zapisują się w statystykach.",
+	onbStep7Title: 'Ustawienia',
+	onbStep7Desc: 'Zmień język (PL/EN), przełącz tryb gry i skonfiguruj wyświetlacz. Znajdziesz tu też instrukcję instalacji serwera display na laptopie lub TV oraz eksport/import kopii zapasowej danych.',
+	onbSkipTour: 'Pomiń',
+	onbBack: 'Wstecz',
+	onbNext: 'Dalej',
+	onbFinish: 'Zakończ',
 };
 
 const englishStrings: LocalizedStrings = {
@@ -1054,6 +1096,26 @@ const englishStrings: LocalizedStrings = {
 	mpAdvShort: 'ADV',
 	mpWhoStarts: 'Who starts?',
 	mpBullThrowHint: 'Decide with a bull throw',
+	onbStep0Title: 'Welcome to Dart Scorer!',
+	onbStep0Desc: 'A dart scoring app with game history, WiFi multiplayer and an external scoreboard display. This short tour will show you where everything is.',
+	onbStep1Title: 'Game variant',
+	onbStep1Desc: 'Choose between 301, 401 or 501. Each variant differs in the number of points to reach zero from — 501 is the tournament standard.',
+	onbStep2Title: 'Game mode',
+	onbStep2Desc: 'Simple: enter the score for each turn using the keypad. Advanced: tap each dart individually and the score appears on the board graphic below.',
+	onbStep3Title: 'Start a game',
+	onbStep3Desc: 'Tap PLAY to jump straight into a game.',
+	onbStep4Title: 'WiFi Multiplayer',
+	onbStep4Desc: 'One laptop runs the server and displays the scoreboard — the phone acts as the controller. Other players join with a room code.',
+	onbStep5Title: 'Statistics',
+	onbStep5Desc: "Here you'll find a full history of every game, progress charts, 3-dart averages, checkouts and more. Tap any game to see a detailed breakdown.",
+	onbStep6Title: 'Training',
+	onbStep6Desc: "Practice specific skills: random targets, checkouts, clock (1–20 in sequence) and Bob's 27 (classic doubles training). Session results are saved to your stats.",
+	onbStep7Title: 'Settings',
+	onbStep7Desc: 'Switch language (PL/EN), toggle game mode and configure the display. You\'ll also find the guide for installing the display server on a laptop or TV, and the data backup export/import.',
+	onbSkipTour: 'Skip',
+	onbBack: 'Back',
+	onbNext: 'Next',
+	onbFinish: 'Finish',
 };
 
 export function getLocalizedStrings(language: Language): LocalizedStrings {

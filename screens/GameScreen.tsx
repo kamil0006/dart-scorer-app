@@ -301,7 +301,6 @@ export default function GameScreen({ route, navigation }: GameScreenProps): Reac
 			displayClientId,
 			safeDisplayProgress,
 			displayPlayerName,
-			safeDisplayProgress.matchLegsWon,
 			visibleLegsWon,
 			visibleSetsWon,
 			initialScore,

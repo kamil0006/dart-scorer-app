@@ -25,7 +25,8 @@ export function useDartGame({ initialScore, advancedOverride }: UseDartGameParam
 	const [turns, setTurns] = useState<number[]>([]);
 	const [hits, setHits] = useState<Dart[]>([]);
 	const [gameHits, setGameHits] = useState<Dart[]>([]);
-	const [turnHitCounts, setTurnHitCounts] = useState<number[]>([]);
+	// Only the setter is read (via updater form in undo); the value itself is never rendered.
+	const [, setTurnHitCounts] = useState<number[]>([]);
 	const [advanced, setAdvanced] = useState(advancedOverride ?? false);
 	const [gameOver, setGameOver] = useState(false);
 	const [showCheckoutDartsModal, setShowCheckoutDartsModal] = useState(false);

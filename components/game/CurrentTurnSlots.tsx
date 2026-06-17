@@ -6,7 +6,7 @@ import type { Dart } from '../../lib/db';
 
 type Props = {
 	hits: Dart[];
-	onUndo: () => void;
+	onUndo?: () => void;
 };
 
 export default function CurrentTurnSlots({ hits, onUndo }: Props) {
@@ -17,9 +17,11 @@ export default function CurrentTurnSlots({ hits, onUndo }: Props) {
 					<Text style={styles.slotTxt}>{hits[index] ? formatDart(hits[index]) : '-'}</Text>
 				</View>
 			))}
-			<Pressable style={styles.slotBtn} onPress={onUndo}>
-				<MaterialIcons name='delete-sweep' size={20} color='#fff' />
-			</Pressable>
+			{onUndo && (
+				<Pressable style={styles.slotBtn} onPress={onUndo}>
+					<MaterialIcons name='delete-sweep' size={20} color='#fff' />
+				</Pressable>
+			)}
 		</View>
 	);
 }

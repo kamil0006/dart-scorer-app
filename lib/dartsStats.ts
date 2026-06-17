@@ -1,5 +1,4 @@
-import type { GameRow } from './db';
-import type { Dart } from './db';
+import type { Dart, GameRow } from './db';
 
 export type ScoreRanges = {
 	'100+': number;
