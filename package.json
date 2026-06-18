@@ -1,6 +1,6 @@
 {
   "name": "dart-scorer",
-  "version": "1.11.3",
+  "version": "1.11.4",
   "scripts": {
     "start": "expo start",
     "display": "npm --prefix display-server start",

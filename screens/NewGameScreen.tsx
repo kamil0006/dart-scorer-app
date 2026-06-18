@@ -48,12 +48,11 @@ export default function NewGameScreen({ navigation }: NewGameScreenProps) {
 		}, [])
 	);
 
-	const latestGames = useMemo(() => games.slice(0, 5), [games]);
-	const recentAverage = useMemo(() => {
-		const scored = latestGames.reduce((sum, game) => sum + game.scored, 0);
-		const darts = latestGames.reduce((sum, game) => sum + game.darts, 0);
+	const overallAverage = useMemo(() => {
+		const scored = games.reduce((sum, game) => sum + game.scored, 0);
+		const darts = games.reduce((sum, game) => sum + game.darts, 0);
 		return calculateAvg3(scored, darts).toFixed(1);
-	}, [latestGames]);
+	}, [games]);
 	const selectedGames = games.filter(game => game.start === STARTING_SCORE[variant]).length;
 
 	const handleStart = () =>
@@ -123,7 +122,7 @@ export default function NewGameScreen({ navigation }: NewGameScreenProps) {
 					</View>
 					<View style={styles.previewGrid}>
 						<PreviewMetric label={strings.games} value={games.length} />
-						<PreviewMetric label={strings.average} value={recentAverage} />
+						<PreviewMetric label={strings.average} value={overallAverage} />
 						<PreviewMetric label={variant} value={selectedGames} />
 					</View>
 				</View>

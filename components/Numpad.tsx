@@ -182,8 +182,8 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 10,
 	},
 	displayCardCompact: {
-		maxWidth: 304,
-		minHeight: 46,
+		maxWidth: 324,
+		minHeight: 52,
 		borderRadius: 8,
 		paddingVertical: 4,
 		paddingHorizontal: 8,
@@ -209,8 +209,8 @@ const styles = StyleSheet.create({
 		marginTop: 1,
 	},
 	displayCompact: {
-		fontSize: 23,
-		lineHeight: 26,
+		fontSize: 26,
+		lineHeight: 30,
 		marginTop: 0,
 	},
 	displayHint: {
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 	},
 	gridCompact: {
-		maxWidth: 304,
+		maxWidth: 324,
 		gap: 6,
 	},
 	actionRow: {
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 	},
 	actionRowCompact: {
-		maxWidth: 304,
+		maxWidth: 324,
 		gap: 6,
 	},
 	key: {
@@ -260,9 +260,9 @@ const styles = StyleSheet.create({
 		gap: 6,
 	},
 	keyCompact: {
-		width: 54,
-		height: 43,
-		borderRadius: 9,
+		width: 60,
+		height: 50,
+		borderRadius: 10,
 	},
 	wide: {
 		flex: 1,
